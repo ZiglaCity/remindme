@@ -6,7 +6,11 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
+  date,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const instant = (name: string) => timestamp(name, { withTimezone: true });
 export const user = pgTable("user", {
@@ -90,4 +94,146 @@ export const rateLimits = pgTable(
     expiresAt: instant("expires_at").notNull(),
   },
   (table) => [index("rate_limits_expiry_idx").on(table.expiresAt)],
+);
+
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    sourceText: text("source_text"),
+    dueAt: instant("due_at").notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    deadlineType: text("deadline_type", {
+      enum: ["date_only", "date_time"],
+    }).notNull(),
+    timeZone: text("time_zone").notNull(),
+    priority: text("priority", { enum: ["low", "normal", "high"] })
+      .notNull()
+      .default("normal"),
+    status: text("status", { enum: ["active", "completed", "archived"] })
+      .notNull()
+      .default("active"),
+    completedAt: instant("completed_at"),
+    deletedAt: instant("deleted_at"),
+    scheduleVersion: integer("schedule_version").notNull().default(1),
+    revision: integer("revision").notNull().default(1),
+    createdAt: instant("created_at").notNull().defaultNow(),
+    updatedAt: instant("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("reminders_owner_deadline_idx")
+      .on(t.userId, t.status, t.dueAt, t.id)
+      .where(sql`${t.deletedAt} is null`),
+    check(
+      "reminder_title_length",
+      sql`char_length(btrim(${t.title})) between 1 and 160`,
+    ),
+    check(
+      "reminder_description_length",
+      sql`${t.description} is null or char_length(${t.description}) <= 2000`,
+    ),
+    check(
+      "reminder_source_length",
+      sql`${t.sourceText} is null or char_length(${t.sourceText}) <= 4000`,
+    ),
+    check(
+      "reminder_status_valid",
+      sql`${t.status} in ('active','completed','archived')`,
+    ),
+    check(
+      "reminder_priority_valid",
+      sql`${t.priority} in ('low','normal','high')`,
+    ),
+    check(
+      "reminder_deadline_type_valid",
+      sql`${t.deadlineType} in ('date_only','date_time')`,
+    ),
+    check(
+      "reminder_versions_positive",
+      sql`${t.scheduleVersion} > 0 and ${t.revision} > 0`,
+    ),
+    check(
+      "reminder_completed_timestamp",
+      sql`${t.status} <> 'completed' or ${t.completedAt} is not null`,
+    ),
+  ],
+);
+export const scheduledNotifications = pgTable(
+  "scheduled_notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reminderId: uuid("reminder_id")
+      .notNull()
+      .references(() => reminders.id, { onDelete: "cascade" }),
+    thresholdPercent: integer("threshold_percent").notNull(),
+    scheduleVersion: integer("schedule_version").notNull(),
+    scheduledFor: instant("scheduled_for").notNull(),
+    status: text("status", {
+      enum: ["pending", "processing", "sent", "failed", "cancelled"],
+    })
+      .notNull()
+      .default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: instant("next_attempt_at"),
+    processingStartedAt: instant("processing_started_at"),
+    sentAt: instant("sent_at"),
+    providerMessageId: text("provider_message_id"),
+    lastErrorCode: text("last_error_code"),
+    cancellationReason: text("cancellation_reason"),
+    createdAt: instant("created_at").notNull().defaultNow(),
+    updatedAt: instant("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("notification_reminder_version_threshold_idx").on(
+      t.reminderId,
+      t.scheduleVersion,
+      t.thresholdPercent,
+    ),
+    index("notification_due_idx")
+      .on(t.scheduledFor, t.id)
+      .where(sql`${t.status} = 'pending'`),
+    index("notification_retry_idx")
+      .on(t.nextAttemptAt, t.id)
+      .where(sql`${t.status} = 'pending' and ${t.nextAttemptAt} is not null`),
+    index("notification_stale_idx")
+      .on(t.processingStartedAt)
+      .where(sql`${t.status} = 'processing'`),
+    check(
+      "notification_threshold_valid",
+      sql`${t.thresholdPercent} in (50,75,90)`,
+    ),
+    check(
+      "notification_status_valid",
+      sql`${t.status} in ('pending','processing','sent','failed','cancelled')`,
+    ),
+    check(
+      "notification_counters_valid",
+      sql`${t.attemptCount} >= 0 and ${t.scheduleVersion} > 0`,
+    ),
+  ],
+);
+export const notificationAttempts = pgTable(
+  "notification_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    notificationId: uuid("notification_id")
+      .notNull()
+      .references(() => scheduledNotifications.id, { onDelete: "cascade" }),
+    attemptedAt: instant("attempted_at").notNull().defaultNow(),
+    result: text("result").notNull(),
+    errorCategory: text("error_category"),
+    errorMessage: text("error_message"),
+    providerMessageId: text("provider_message_id"),
+  },
+  (t) => [
+    index("notification_attempt_history_idx").on(
+      t.notificationId,
+      t.attemptedAt,
+    ),
+  ],
 );

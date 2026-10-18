@@ -27,7 +27,7 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 | ----- | ----------------------------------------------- | -------------------------------------- |
 | 1     | Repository, runtime, database foundation        | Complete                               |
 | 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending |
-| 3     | Manual reminder CRUD and durable schedules      | Not started                            |
+| 3     | Manual reminder CRUD and durable schedules      | Complete                               |
 | 4     | Confirmed AI parsing and optional voice capture | Not started                            |
 | 5     | SMTP delivery, attempts, and retries            | Not started                            |
 | 6     | Independently deployed Azure timer worker       | Not started                            |
@@ -119,49 +119,49 @@ Expected files: reminder/notification/attempt schemas and migration, `src/lib/va
 
 ### Data model and invariants
 
-- [ ] Create `reminders` with UUID ID, owner FK, title, nullable description/source text/priority, `due_at` TIMESTAMPTZ, original local `due_date`, deadline type, IANA zone, status, completion timestamp, schedule version, timestamps, and nullable soft-delete timestamp.
-- [ ] Create `scheduled_notifications` with reminder FK, threshold, version, scheduled instant, status, attempt count, retry time, processing timestamp, sent timestamp, provider ID, sanitized error code, nullable cancellation reason for D4 auditability, and timestamps.
-- [ ] Create `notification_attempts` for immutable attempt outcomes and sanitized errors; refine claim fencing fields in Phase 6 if needed.
-- [ ] Add database checks for valid statuses, deadline types, thresholds, and nonnegative counters; enforce unique `(reminder_id, schedule_version, threshold_percent)`.
-- [ ] Index owner/status/deadline queries, due pending/retry work, stale processing work, and attempt-history lookup.
-- [ ] Associate queue and history ownership through the reminder FK; enforce ownership joins whenever returning either to an app user.
-- [ ] Review migration SQL, apply it to development/test databases, and test constraints directly.
+- [x] Create `reminders` with UUID ID, owner FK, title, nullable description/source text/priority, `due_at` TIMESTAMPTZ, original local `due_date`, deadline type, IANA zone, status, completion timestamp, schedule version, timestamps, and nullable soft-delete timestamp.
+- [x] Create `scheduled_notifications` with reminder FK, threshold, version, scheduled instant, status, attempt count, retry time, processing timestamp, sent timestamp, provider ID, sanitized error code, nullable cancellation reason for D4 auditability, and timestamps.
+- [x] Create `notification_attempts` for immutable attempt outcomes and sanitized errors; refine claim fencing fields in Phase 6 if needed.
+- [x] Add database checks for valid statuses, deadline types, thresholds, and nonnegative counters; enforce unique `(reminder_id, schedule_version, threshold_percent)`.
+- [x] Index owner/status/deadline queries, due pending/retry work, stale processing work, and attempt-history lookup.
+- [x] Associate queue and history ownership through the reminder FK; enforce ownership joins whenever returning either to an app user.
+- [x] Review migration SQL, apply it to development/test databases, and test constraints directly.
 
 ### Deadline and scheduling domain
 
-- [ ] Implement confirmed D2–D6 and D10 with their acceptance tests; select a maintained DST-disambiguation library.
-- [ ] Implement strict request schemas for create/edit/status/settings operations with length and format limits; reject unexpected ownership/status fields.
-- [ ] Convert explicit local date/time and IANA zone to a UTC instant without using the host's local zone.
-- [ ] Convert date-only input to 23:59 local time while preserving `date_only`, local date, and interpretation zone.
-- [ ] Validate impossible dates, invalid IANA zones, leap days, offset boundaries, DST gaps/overlaps, and ambiguous local times.
-- [ ] Implement pure threshold calculation: `created_at + p * (due_at - created_at)` for p = 0.50, 0.75, 0.90; use one injected operation clock and documented precision/boundary rules.
-- [ ] Skip schedule times at or before now; allow past deadlines as overdue reminders with no new queue records.
-- [ ] Verify the PRD's example: October 20 18:00 to October 30 18:00 yields October 25, 28, and 29 at 18:00.
+- [x] Implement confirmed schedule anchors, DST rejection, status transitions, input/pagination limits, and preference-zone stability (D2/D3/D5/D6/D10). Persist D4 cancellation audit fields; catch-up execution remains Phase 6.
+- [x] Implement strict request schemas for create/edit/status/settings operations with length and format limits; reject unexpected ownership/status fields.
+- [x] Convert explicit local date/time and IANA zone to a UTC instant without using the host's local zone.
+- [x] Convert date-only input to 23:59 local time while preserving `date_only`, local date, and interpretation zone.
+- [x] Validate impossible dates, invalid IANA zones, leap days, offset boundaries, DST gaps/overlaps, and ambiguous local times.
+- [x] Implement pure threshold calculation: `created_at + p * (due_at - created_at)` for p = 0.50, 0.75, 0.90; use one injected operation clock and documented precision/boundary rules.
+- [x] Skip schedule times at or before now; allow past deadlines as overdue reminders with no new queue records.
+- [x] Verify the PRD's example: October 20 18:00 to October 30 18:00 yields October 25 at 18:00, October 28 at 06:00, and October 29 at 18:00.
 
 ### Services, APIs, and basic usable UI
 
-- [ ] Implement atomic reminder + schedule creation with rollback on failure.
-- [ ] Implement owned active/completed lists, detail lookup, stable ordering, bounded pagination, overdue state, and optional next-notification summary.
-- [ ] Implement title/description edits without schedule regeneration.
-- [ ] Implement deadline edits with a transaction, reminder locking/version increment, cancellation of obsolete unsent work, and new future schedule records.
-- [ ] Implement completion and soft deletion that invalidate outstanding work transactionally; workers must also reject obsolete processing claims.
-- [ ] Implement reopening according to D5 with a fresh version and no duplicate eligible work.
-- [ ] Protect against concurrent edits/status changes with documented locking or optimistic concurrency behavior.
-- [ ] Implement the PRD reminder API routes, settings GET/PATCH, and server ownership checks in every query.
-- [ ] Build basic authenticated manual creation, active list, detail/edit, complete/reopen/delete, completed list, and time-zone settings so this phase can be tested without AI/email.
-- [ ] Require explicit confirmation for deletion and display actionable validation/save failures without losing form input.
+- [x] Implement atomic reminder + schedule creation with rollback on failure.
+- [x] Implement owned active/completed lists, detail lookup, stable ordering, bounded pagination, overdue state, and optional next-notification summary.
+- [x] Implement title/description edits without schedule regeneration.
+- [x] Implement deadline edits with a transaction, reminder locking/version increment, cancellation of obsolete unsent work, and new future schedule records.
+- [x] Implement completion and soft deletion that invalidate outstanding work transactionally; workers must also reject obsolete processing claims.
+- [x] Implement reopening according to D5 with a fresh version and no duplicate eligible work.
+- [x] Protect against concurrent edits/status changes with documented locking or optimistic concurrency behavior.
+- [x] Implement the PRD reminder API routes, settings GET/PATCH, and server ownership checks in every query.
+- [x] Build basic authenticated manual creation, active list, detail/edit, complete/reopen/delete, completed list, and time-zone settings so this phase can be tested without AI/email.
+- [x] Require explicit confirmation for deletion and display actionable validation/save failures without losing form input.
 
 ### Verification
 
-- [ ] Unit-test deadline conversion, DST policy, thresholds, exact-now boundaries, short/past deadlines, rescheduling, and status transitions with a fixed clock.
-- [ ] Integration-test transactional rollback, uniqueness, deadline replacement, title-only edits, completion/deletion cancellation, reopening, and concurrent mutations.
-- [ ] With two users, test read/list/edit/complete/reopen/delete/settings/history isolation, including known foreign UUIDs and attempted owner-ID injection.
-- [ ] Run manual CRUD E2E flows and prove persisted schedules match expected UTC instants.
+- [x] Unit-test deadline conversion, DST policy, thresholds, exact-now boundaries, short/past deadlines, and validation. Verify rescheduling/status transitions against PostgreSQL with an injected fixed clock.
+- [x] Integration-test transactional rollback, uniqueness, deadline replacement, title-only edits, completion/deletion cancellation, reopening, and concurrent mutations.
+- [x] With two users, test read/list/edit/complete/reopen/delete/settings/history isolation, including known foreign UUIDs and attempted owner-ID injection.
+- [x] Run manual CRUD E2E flows and prove persisted schedules match expected UTC instants.
 
 Exit gate:
 
-- [ ] Manual reminder workflows work with real database persistence, correct deadlines, transactional schedule replacement, and passing ownership tests.
-- [ ] AI and SMTP availability are not required for manual CRUD.
+- [x] Manual reminder workflows work with real database persistence, correct deadlines, transactional schedule replacement, and passing ownership tests.
+- [x] AI and SMTP availability are not required for manual CRUD.
 
 ## Phase 4 — AI parsing and voice input
 
@@ -373,3 +373,18 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Configuration: `.env.local` was read privately; credentials were not printed or copied into tracked files. Browser tests use dedicated port 3100, the test DB, temporary fixture accounts, and an overridden test-only secret/allowlist. Normal developer settings are not changed.
 - Audit: the nine existing tooling findings remain. Better Auth's optional Drizzle Kit peer causes four moderate migration-tool findings to appear in the production-omitting-dev audit; no Drizzle Kit files appeared in the inspected production auth-route trace. See compatibility notes for the limitation rather than claiming a clean production audit.
 - Next task: configure Google OAuth using `docs/authentication.md`, verify live sign-in/collision handling, close Phase 2, then begin Phase 3 manual reminders and durable scheduling.
+
+### October 18, 2026 — Phase 3 complete
+
+- Implemented manual create/list/detail/edit/complete/reopen/soft-delete flows and active/completed views. Added explicit deletion confirmation, overdue indicators, schedule/history display, strict pagination, and revision-conflict recovery that preserves drafts.
+- Added reminders, scheduled_notifications, and notification_attempts with version/revision counters, FK ownership, validation/status checks, queue uniqueness, and due/retry/stale/history indexes. Reviewed and applied `0001_nosy_kid_colt.sql` to development and isolated test databases.
+- Selected @js-temporal/polyfill 0.5.1. Date-only deadlines resolve to 23:59 in the reminder's IANA zone; invalid dates and missing/repeated local times are rejected for clarification. Existing instants/zones do not change with profile preferences.
+- Scheduling uses the original creation anchor, 50/75/90 percent, integer-millisecond arithmetic, and future-only records. Creation and replacement are transactional. Completion/deletion cancel pending and processing work; sent history remains intact. Reopening uses a new version and the original anchor. No archive UI was added.
+- Corrected the PRD's 75% example to October 28 at 06:00 for the October 20 18:00 → October 30 18:00 interval. The locked formula is unchanged; an explicit unit test verifies the arithmetic.
+- Passed: 28 unit tests; 18 real PostgreSQL integration tests; public/auth browser flows plus the full reminder browser journey (three browser tests across the full run and targeted final rerun). The new reminder journey verifies persisted formula times, unchanged-title schedules, deadline replacement, stale draft preservation, immediate post-save completion, completed views, reopening, deletion cancellation/confirmation, and a second account's denied access.
+- Database failure evidence: a scoped test trigger forces queue insert failure and proves both reminder creation and schedule replacement roll back fully. Concurrent edits produce one success and one conflict. Repeated completion/deletion preserve original state timestamps. Ownership tests cover HTTP and repository read/edit/complete/reopen/delete/history paths.
+- Fixed a browser-observed race by sharing the just-saved revision with action controls immediately, rather than waiting for a server-page refresh. Stale edits from another tab remain rejected.
+- Final checks: lint, TypeScript, formatting, unit tests, and production build pass. The browser test app has its own `.next-e2e` output and port 3100, so the owner's running development server is preserved. Tests blank AI/SMTP keys and use isolated fixture accounts/databases.
+- Configuration evidence: local Gemini and SMTP settings are present; the owner reports a successful SMTP test. Phase 3 performs no AI interpretation or SMTP sends. Existing dependency-tool advisories remain documented. Live Google OAuth remains a separate Phase 2 external gate because its expected client credential variables are absent.
+- Documentation: updated README, migration guide, decisions, corrected PRD example, and `docs/reminders.md` with API, time, concurrency, transaction, and verification behavior.
+- Next task: Phase 4 — Gemini parsing, editable confirmation/clarification, manual fallback, and browser voice capture. Delivery and the timer worker remain Phases 5–6.

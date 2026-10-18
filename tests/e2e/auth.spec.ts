@@ -51,7 +51,7 @@ test("register, reload, isolate preferences, sign out, and sign back in", async 
   await expect(page).toHaveURL(/\/app$/);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Welcome, Browser Tester A" }),
+    page.getByRole("heading", { name: "Your reminders" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByLabel("Time zone", { exact: true }).fill("Africa/Accra");

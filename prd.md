@@ -261,7 +261,7 @@ For example, if a reminder is created on October 20 at 6 PM and is due October 3
 | Threshold | Scheduled time   |
 | --------- | ---------------- |
 | 50%       | October 25, 6 PM |
-| 75%       | October 28, 6 PM |
+| 75%       | October 28, 6 AM |
 | 90%       | October 29, 6 PM |
 
 All calculations use actual instants, not differences between formatted date strings.

@@ -6,7 +6,7 @@ config({
   quiet: true,
 });
 process.env.REMINDME_E2E_RUN_ID ??= randomUUID();
-const testEmails = ["a", "b"].map(
+const testEmails = ["a", "b", "c", "d"].map(
   (name) => `browser-${name}-${process.env.REMINDME_E2E_RUN_ID}@example.test`,
 );
 const baseURL = "http://127.0.0.1:3100";
@@ -26,6 +26,7 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: false,
     env: {
+      REMINDME_E2E: "1",
       ...(process.env.TEST_DATABASE_URL
         ? { DATABASE_URL: process.env.TEST_DATABASE_URL }
         : {}),
@@ -36,6 +37,10 @@ export default defineConfig({
       TESTER_EMAIL_ALLOWLIST: testEmails.join(","),
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
+      GEMINI_API_KEY: "",
+      SMTP_HOST: "",
+      SMTP_USER: "",
+      SMTP_PASS: "",
     },
     timeout: 120_000,
   },

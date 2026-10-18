@@ -241,3 +241,7 @@ The goal is to prevent silent policy changes during implementation, especially a
 ## Owner amendment — October 18, 2026
 
 D9 access configuration additionally accepts TESTER_ACCESS_MODE=all to allow everyone; public remains an equivalent alias. Default mode remains allowlist. This changes application admission only; SMTP recipient approval remains separate. The implementation and tests must cover all mode.
+
+## D3 implementation selection — October 18, 2026
+
+Use @js-temporal/polyfill 0.5.1 on the selected Node 22 runtime. Explicit IANA zone conversion uses reject disambiguation for DST gaps/overlaps, with integer UTC instants for schedule arithmetic. Unit tests cover those cases and host-zone independence. The PRD's 75% illustrative time was corrected to October 28 at 06:00 for a ten-day interval starting October 20 at 18:00; the confirmed formula itself is unchanged.

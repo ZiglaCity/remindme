@@ -36,3 +36,7 @@ ESLint 9 is retained for the selected Next.js plugin ecosystem compatibility, al
 Better Auth and its standalone Drizzle adapter are pinned to 1.7.10. Installed peer ranges accept Next 16, Drizzle 0.45.4, and pg 8; application type checks and the real PostgreSQL auth tests verify this selected combination.
 
 The full audit still reports the nine existing tooling findings (four moderate, five high). After installing Better Auth, `npm audit --omit=dev` includes the four moderate Drizzle Kit/esbuild findings because Better Auth declares Drizzle Kit as an optional peer. This changes the audit classification from Phase 1's zero-production report; it is not a new auth vulnerability. The inspected production auth route trace contains zero Drizzle Kit files. This does not eliminate the advisory in the installed migration tool; review it again before deployment, and do not expose migration/development servers publicly or force a breaking downgrade to an obsolete kit release.
+
+## Phase 3 time handling — October 18, 2026
+
+Pinned @js-temporal/polyfill 0.5.1 for explicit IANA time-zone/DST disambiguation on Node 22. Server conversion, fixed-clock unit tests, PostgreSQL transactions, and the production build are verified. The dependency installation reports the same nine previously documented tooling advisories; no forced dependency downgrade was applied. Browser tests use a separate Next.js output directory to coexist with a developer server.

@@ -24,7 +24,8 @@ export default function Home() {
         </Link>
       </div>
       <p className="mt-12 border-t border-stone-200 pt-6 text-sm text-stone-500">
-        In development. Reminder capture is coming next.
+        In development. Manual reminders are available; email notifications are
+        coming next.
       </p>
     </main>
   );

@@ -15,6 +15,9 @@ export default async function AppLayout({
           RemindMe
         </Link>
         <nav aria-label="Application" className="flex gap-6">
+          <Link href="/app/completed" className="text-sm underline">
+            Completed
+          </Link>
           <Link href="/app/settings" className="text-sm underline">
             Settings
           </Link>

@@ -8,6 +8,13 @@
       "when": 1792319779519,
       "tag": "0000_clever_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792336240581,
+      "tag": "0001_nosy_kid_colt",
+      "breakpoints": true
     }
   ]
 }
