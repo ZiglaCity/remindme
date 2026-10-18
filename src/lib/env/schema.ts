@@ -26,7 +26,9 @@ export const webEnvSchema = databaseEnvSchema.extend({
   GOOGLE_CLIENT_ID: optionalText,
   GOOGLE_CLIENT_SECRET: optionalText,
   GEMINI_API_KEY: optionalText,
-  TESTER_ACCESS_MODE: z.enum(["allowlist", "public"]).default("allowlist"),
+  TESTER_ACCESS_MODE: z
+    .enum(["allowlist", "public", "all"])
+    .default("allowlist"),
   TESTER_EMAIL_ALLOWLIST: z.string().default(""),
   SMTP_APPROVED_RECIPIENTS: z.string().default(""),
 });

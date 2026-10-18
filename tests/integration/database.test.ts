@@ -3,7 +3,10 @@ import { expect, test } from "vitest";
 import { createDatabase } from "../../src/lib/db/connection";
 import type { PoolClient } from "pg";
 
-config({ path: [".env.test.local", ".env.test"], quiet: true });
+config({
+  path: [".env.test.local", ".env.test", ".env.local", ".env"],
+  quiet: true,
+});
 test("PostgreSQL supports rollback and concurrent SKIP LOCKED claims", async () => {
   // Deliberately no DATABASE_URL fallback: never run integration writes on the app database.
   const url = process.env.TEST_DATABASE_URL;

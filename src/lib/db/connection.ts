@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { databaseEnvSchema, parseEnvironment } from "../env/schema";
+import * as schema from "./schema";
 
 // Runtime-neutral for CLI/Azure reuse. Web code imports server.ts instead.
 export function createDatabase(values: Record<string, unknown>) {
@@ -14,5 +15,5 @@ export function createDatabase(values: Record<string, unknown>) {
     query_timeout: 20_000,
     allowExitOnIdle: true,
   });
-  return { pool, db: drizzle(pool) };
+  return { pool, db: drizzle(pool, { schema }) };
 }

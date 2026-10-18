@@ -237,3 +237,7 @@ Before coding dependent functionality, Codex must:
 5. Keep the locked product scope unchanged unless a concrete technical blocker is documented.
 
 The goal is to prevent silent policy changes during implementation, especially around deadline semantics, missed notifications, account isolation and delivery behavior.
+
+## Owner amendment — October 18, 2026
+
+D9 access configuration additionally accepts TESTER_ACCESS_MODE=all to allow everyone; public remains an equivalent alias. Default mode remains allowlist. This changes application admission only; SMTP recipient approval remains separate. The implementation and tests must cover all mode.

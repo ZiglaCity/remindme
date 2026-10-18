@@ -2,7 +2,7 @@
 
 A personal reminder app in development. See [requirements](./prd.md), [confirmed decisions](./docs/decisions.md), and the [phased plan](./TODO.md).
 
-Phase 1 provides a Next.js public entry page, TypeScript/Tailwind, environment validation, Drizzle/PostgreSQL tooling, and test/CI configuration. Accounts and reminders are not implemented yet.
+Phase 1 foundation is verified with Neon connectivity and real PostgreSQL transaction/locking tests. Phase 2 adds email/password accounts, Google OAuth configuration, server-enforced tester access, isolated time-zone preferences, and atomic shared rate limits. Reminder capture arrives in Phase 3.
 
 ## Local setup
 
@@ -15,21 +15,21 @@ Use a development Neon project/branch. Privately copy its pooled PostgreSQL URL,
 
 ## Checks
 
-| Command                                      | Purpose                                       |
-| -------------------------------------------- | --------------------------------------------- |
-| `npm run lint`                               | ESLint                                        |
-| `npm run typecheck`                          | TypeScript                                    |
-| `npm run format:check` / `npm run format`    | Check/apply formatting                        |
-| `npm test`                                   | Unit tests                                    |
-| `npm run test:integration`                   | Real PostgreSQL rollback/locking              |
-| `npm run test:e2e`                           | Chromium smoke check, starts local web server |
-| `npm run build` / `npm start`                | Production build/server                       |
-| `npm run db:check`                           | Database connectivity                         |
-| `npm run db:generate` / `npm run db:migrate` | Generate/apply migrations                     |
+| Command                                      | Purpose                                              |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `npm run lint`                               | ESLint                                               |
+| `npm run typecheck`                          | TypeScript                                           |
+| `npm run format:check` / `npm run format`    | Check/apply formatting                               |
+| `npm test`                                   | Unit tests                                           |
+| `npm run test:integration`                   | PostgreSQL auth, isolation, rates, rollback/locking  |
+| `npm run test:e2e`                           | Chromium public/auth journeys; dedicated test server |
+| `npm run build` / `npm start`                | Production build/server                              |
+| `npm run db:check`                           | Database connectivity                                |
+| `npm run db:generate` / `npm run db:migrate` | Generate/apply migrations                            |
 
-Install the browser once with `npx playwright install chromium`. Set `TEST_DATABASE_URL` in `.env.test.local` to an isolated PostgreSQL database. Integration tests create/drop a uniquely named table and never fall back to the application database. CI uses disposable PostgreSQL. Live Neon verification needs a separately configured test branch.
+Install the browser once with `npx playwright install chromium`. Set `TEST_DATABASE_URL` in `.env.test.local` or `.env.local` to an isolated PostgreSQL database. Integration tests apply migrations, create/clean unique fixture accounts and a temporary locking table, and never fall back to the application database. CI uses disposable PostgreSQL. Live Neon verification needs a separately configured test branch.
 
-See [migration instructions](./migrations/README.md). The first product schema arrives with Better Auth in Phase 2; there is no artificial foundation table.
+See [migration instructions](./migrations/README.md). The first versioned migration creates the Better Auth, preferences, and rate-limit tables. See [authentication setup and tests](./docs/authentication.md).
 
 ## Configuration and boundaries
 
@@ -37,6 +37,6 @@ Keep environment files and Azure local settings out of Git. Only `NEXT_PUBLIC_AP
 
 `src/lib/db/server.ts` and `src/lib/env/server.ts` enforce Next.js server-only imports. Runtime-neutral connection/validation modules support trusted CLI and future worker code; never import connections into client components.
 
-Tester access defaults to allowlist mode with separately approved SMTP recipients. Configuration is prepared; enforcement arrives with authentication and delivery before those features are exposed. Profile time-zone changes will affect new reminders only.
+Tester access defaults to server-enforced allowlist mode. Set `TESTER_ACCESS_MODE=all` to explicitly allow everyone (`public` is an alias). SMTP recipient approval stays separate for Phase 5. Profile time-zone changes affect new reminders only.
 
-Vercel and independent Azure deployment are later phases. This scaffold does not establish live Neon, OAuth, Gemini, SMTP, or hosted deployment success.
+Vercel and independent Azure deployment are later phases. Neon connectivity is verified; Google credentials and live OAuth exchange remain pending. Gemini, SMTP, and hosted deployment are not implemented.

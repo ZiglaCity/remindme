@@ -23,17 +23,17 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 
 ## Progress tracker
 
-| Phase | Outcome                                         | Status                                       |
-| ----- | ----------------------------------------------- | -------------------------------------------- |
-| 1     | Repository, runtime, database foundation        | Local foundation verified; Neon gate pending |
-| 2     | Authentication and ownership boundaries         | Not started                                  |
-| 3     | Manual reminder CRUD and durable schedules      | Not started                                  |
-| 4     | Confirmed AI parsing and optional voice capture | Not started                                  |
-| 5     | SMTP delivery, attempts, and retries            | Not started                                  |
-| 6     | Independently deployed Azure timer worker       | Not started                                  |
-| 7     | Complete mobile UI and installable PWA          | Not started                                  |
-| 8     | Production deployment and operational hardening | Not started                                  |
-| 9     | Reproducible documentation and handoff          | Not started                                  |
+| Phase | Outcome                                         | Status                                 |
+| ----- | ----------------------------------------------- | -------------------------------------- |
+| 1     | Repository, runtime, database foundation        | Complete                               |
+| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending |
+| 3     | Manual reminder CRUD and durable schedules      | Not started                            |
+| 4     | Confirmed AI parsing and optional voice capture | Not started                            |
+| 5     | SMTP delivery, attempts, and retries            | Not started                            |
+| 6     | Independently deployed Azure timer worker       | Not started                            |
+| 7     | Complete mobile UI and installable PWA          | Not started                            |
+| 8     | Production deployment and operational hardening | Not started                            |
+| 9     | Reproducible documentation and handoff          | Not started                            |
 
 ## Confirmed implementation decisions
 
@@ -47,7 +47,7 @@ The owner confirmed D1–D10 on October 18, 2026. The full policies and acceptan
 - D6: title 160, description 2,000, source 4,000 characters; priority low/normal/high (normal default); pagination 20/max 100; AI 10/min/user; auth 10/15min/key; SMTP delays 1/5/15/60 minutes, five attempts; batch 25, concurrency 5, lease five minutes; validate configurable bounds.
 - D7: transaction-capable PostgreSQL driver in both runtimes; verify row locks using real PostgreSQL.
 - D8: atomic PostgreSQL-backed shared rate limiting with expiry/cleanup and HTTP 429.
-- D9: server-enforced tester allowlist by default; separately approved SMTP recipients; verified Google identities; no automatic email-only account linking.
+- D9: server-enforced tester allowlist by default; explicit all/public mode opens access; separately approved SMTP recipients; verified Google identities; no automatic email-only account linking.
 - D10: profile time-zone changes affect new reminders only; existing deadlines, schedules, and interpretation zones remain unchanged.
 
 Implementation follow-ups: select the DST library in Phase 3, implement and test each policy in its phase, and verify actual Azure startup in Phase 6. Compatibility verification does not imply deployment verification.
@@ -72,15 +72,15 @@ Expected files: root package/TypeScript/lint/format configuration, `src/app/`, `
 - [x] Add Zod environment validation separately for web, worker, and shared server settings. Avoid requiring SMTP or Gemini secrets in runtimes that do not use them.
 - [x] Add placeholder-only `.env.example` covering database/direct migration URL if needed, Better Auth, OAuth, Gemini, SMTP, sender, and public application URL.
 - [x] Define explicit local, test, preview, and production environment separation.
-- [ ] Set up a development Neon database and an isolated integration-test database/branch; never reset production data in tests.
-- [ ] Configure confirmed D7 using Drizzle/node-postgres and verify a real connection with bounded timeout behavior.
+- [x] Set up a development Neon database and an isolated integration-test database/branch; never reset production data in tests.
+- [x] Configure confirmed D7 using Drizzle/node-postgres and verify a real connection with bounded timeout behavior.
 - [x] Establish migration generation/review/application workflow. No product tables exist yet; first auth migration is explicitly deferred to Phase 2. Never use schema push as the production release process.
 - [x] Document local startup, required credentials, migration commands, and how to run checks.
 
 Exit gate:
 
 - [x] A clean lockfile installation succeeds; the app starts locally, passes foundation checks, and builds.
-- [ ] Development database connectivity and migration execution are verified; missing external credentials are recorded as blockers.
+- [x] Development database connectivity and migration execution are verified; missing external credentials are recorded as blockers.
 
 ## Phase 2 — Authentication and user isolation
 
@@ -88,29 +88,30 @@ Expected files: `src/lib/auth/`, auth schema and migration, preference schema/re
 
 ### Authentication
 
-- [ ] Integrate Better Auth's documented Next.js and Drizzle adapter; generate/review its supported user, session, account, and verification table schema as applicable.
-- [ ] Add versioned auth and `user_preferences` migrations; reference the actual Better Auth user ID type rather than assuming auth IDs are UUIDs.
-- [ ] Implement email/password registration, sign-in, sign-out, validation messages, and session persistence.
-- [ ] Configure Google OAuth with environment-specific origins, provider credentials, and documented callback URLs.
-- [ ] Prevent automatic linking merely on matching email strings; explicitly configure and test provider/account collision behavior.
-- [ ] Verify supported password hashing and production cookie settings: HttpOnly, Secure, and appropriate SameSite.
-- [ ] Enforce sessions and the D9 tester allowlist on the server for protected pages/APIs; handle expired/revoked sessions and non-approved accounts consistently.
-- [ ] Add PostgreSQL-backed atomic auth rate limiting (D6/D8), cleanup and HTTP 429; verify trusted-origin/CSRF handling for cookie-authenticated mutations.
-- [ ] Document that email/password addresses are unverified and no self-service password recovery exists in V1.
+- [x] Integrate Better Auth's documented Next.js and Drizzle adapter; generate/review its supported user, session, account, and verification table schema as applicable.
+- [x] Add versioned auth and `user_preferences` migrations; reference the actual Better Auth user ID type rather than assuming auth IDs are UUIDs.
+- [x] Implement email/password registration, sign-in, sign-out, validation messages, and session persistence.
+- [x] Implement Google OAuth with verified-claim checks, conditional UI, trusted origins, and documented callbacks.
+- [ ] Configure real Google credentials and run the live OAuth/collision checks.
+- [x] Disable automatic account linking and verify its configuration and the blocked account-management surface. Live matching-email provider collision behavior remains part of the Google gate.
+- [x] Verify supported password hashing and production cookie settings: HttpOnly, Secure, and appropriate SameSite.
+- [x] Enforce sessions and the D9 tester allowlist on the server for protected pages/APIs; handle expired/revoked sessions and non-approved accounts consistently.
+- [x] Add PostgreSQL-backed atomic auth rate limiting (D6/D8), cleanup and HTTP 429; verify trusted-origin/CSRF handling for cookie-authenticated mutations.
+- [x] Document that email/password addresses are unverified and no self-service password recovery exists in V1.
 
 ### Preferences and ownership infrastructure
 
-- [ ] Detect browser IANA time zone during onboarding, validate it server-side, and ask the user to review the value; use an explicit reviewed fallback if detection fails.
-- [ ] Persist preferences idempotently, including accounts created through OAuth.
-- [ ] Add a server session helper and repository conventions that require authenticated owner identity.
-- [ ] Standardize validation, unauthorized, forbidden/not-found, conflict, and sanitized internal error responses without revealing record existence unnecessarily.
-- [ ] Build a reusable two-user integration fixture; test direct server access as well as HTTP handlers.
+- [x] Detect browser IANA time zone during onboarding, validate it server-side, and ask the user to review the value; use an explicit reviewed fallback if detection fails.
+- [x] Persist preferences idempotently, including accounts created through OAuth.
+- [x] Add a server session helper and repository conventions that require authenticated owner identity.
+- [x] Standardize validation, unauthorized, forbidden/not-found, conflict, and sanitized internal error responses without revealing record existence unnecessarily.
+- [x] Build a reusable two-user integration fixture; test direct server access as well as HTTP handlers.
 
 Exit gate:
 
-- [ ] Registration, password sign-in/out, reload persistence, and protected route rejection pass.
+- [x] Registration, password sign-in/out, reload persistence, and protected route rejection pass.
 - [ ] Google OAuth is verified in a suitable configured test environment; account collisions do not cause unsafe linking.
-- [ ] Preferences are isolated; unauthenticated, non-allowlisted, and cross-user access is rejected server-side. Verify Google identity claims and explicit public-access configuration. Extend ownership tests to every reminder path in Phase 3.
+- [x] Preferences are isolated; unauthenticated, non-allowlisted, and cross-user access is rejected server-side. Verify Google identity claims and explicit public-access configuration. Extend ownership tests to every reminder path in Phase 3.
 
 ## Phase 3 — Reminder CRUD and deadline handling
 
@@ -360,3 +361,15 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Migrations: tooling/workflow is ready. First product migration is deliberately deferred to the Better Auth schema in Phase 2; no artificial table or applied migration is claimed.
 - Remaining Phase 1 gate: provision development and isolated test Neon databases; privately configure `.env.local` and `.env.test.local`; run `npm run db:check` and `npm run test:integration`. The phase remains open until these checks pass.
 - Next: complete that database gate, then begin Phase 2 authentication and server-enforced tester access. No auth, reminder, AI, SMTP, Azure, or production deployment functionality is claimed yet.
+
+### October 18, 2026 — Phase 1 complete; Phase 2 implemented, live Google gate open
+
+- Phase 1 completion: the owner's configured development connection passes `npm run db:check`. The separate TEST_DATABASE_URL passes real transaction rollback and two-client SKIP LOCKED tests. The first reviewed versioned migration is applied to development and integration-test databases.
+- Phase 2 implementation: Better Auth 1.7.10 and its matching Drizzle adapter; email/password registration and sign-in/out; durable server-validated sessions; conditional Google provider/button; verified Google profile gate; automatic linking disabled; server-enforced allowlist; owner-approved `all` mode (`public` alias); protected pages; strict, isolated preferences; browser time-zone detection and explicit review; atomic PostgreSQL rate limits; bounded request bodies; private auth response serialization; no reset/verification workflows.
+- Migration: `migrations/0000_clever_night_nurse.sql` and Drizzle metadata create user, session, account, verification, user_preferences, and rate_limits tables with FK/index/uniqueness rules.
+- Passed: development DB connection/migration; 12 unit tests; 10 real PostgreSQL integration tests; two Chromium E2E tests including registration, reload persistence, preference isolation, sign-out, and sign-in. Lint, TypeScript, formatting, and the production build are verified in the final check pass.
+- Security evidence: forged/missing sessions rejected; removed tester access denied; unlisted users denied by default and admitted in explicit all mode; owner-ID injection rejected; foreign Origin mutations rejected; credentials hashed; session response tokens omitted; HttpOnly/SameSite and HTTPS Secure cookie settings checked; concurrent limits tested across pools; exhausted account windows return HTTP 429 with Retry-After.
+- External checks pending: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not configured. The Google provider mapping/configuration tests pass, but an actual Google exchange, consent-screen setup, and matching-email account collision require manual verification with real credentials. Phase 2 remains open for that gate. No deployment or later-phase integrations are claimed.
+- Configuration: `.env.local` was read privately; credentials were not printed or copied into tracked files. Browser tests use dedicated port 3100, the test DB, temporary fixture accounts, and an overridden test-only secret/allowlist. Normal developer settings are not changed.
+- Audit: the nine existing tooling findings remain. Better Auth's optional Drizzle Kit peer causes four moderate migration-tool findings to appear in the production-omitting-dev audit; no Drizzle Kit files appeared in the inspected production auth-route trace. See compatibility notes for the limitation rather than claiming a clean production audit.
+- Next task: configure Google OAuth using `docs/authentication.md`, verify live sign-in/collision handling, close Phase 2, then begin Phase 3 manual reminders and durable scheduling.
