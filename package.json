@@ -14,6 +14,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "db:check": "tsx scripts/db-check.ts",
+    "ai:check": "tsx scripts/ai-check.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
@@ -31,6 +32,7 @@
   "homepage": "https://github.com/ZiglaCity/remindme#readme",
   "dependencies": {
     "@better-auth/drizzle-adapter": "1.7.10",
+    "@google/genai": "2.30.0",
     "@js-temporal/polyfill": "0.5.1",
     "better-auth": "1.7.10",
     "drizzle-orm": "0.45.4",

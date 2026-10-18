@@ -49,6 +49,91 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   expect(signedUp.status()).toBe(200);
   await page.goto("/app");
   await page.getByRole("link", { name: "New reminder", exact: true }).click();
+  const source = "Submit the report tomorrow morning";
+  await page.getByLabel("What do you need to remember?").fill(source);
+  // Real protected endpoint, with no provider key in the isolated browser server.
+  await page
+    .getByRole("button", { name: "Interpret reminder", exact: true })
+    .click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "unavailable",
+  );
+  await expect(page.getByLabel("What do you need to remember?")).toHaveValue(
+    source,
+  );
+  let calls = 0;
+  await page.route("**/api/ai/parse", async (route) => {
+    const input = route.request().postDataJSON();
+    expect(input.text).toBe(source);
+    calls++;
+    if (calls === 1)
+      await route.fulfill({
+        json: {
+          status: "clarify",
+          question: "What exact time tomorrow morning?",
+        },
+      });
+    else {
+      expect(input.clarification).toEqual([
+        { question: "What exact time tomorrow morning?", answer: "9 AM" },
+      ]);
+      await route.fulfill({
+        json: {
+          status: "ready",
+          draft: {
+            title: "AI report",
+            description: null,
+            priority: "normal",
+            deadline: {
+              type: "date_time",
+              date: date(1),
+              time: "09:00",
+              timeZone: "UTC",
+            },
+          },
+        },
+      });
+    }
+  });
+  await page
+    .getByRole("button", { name: "Interpret reminder", exact: true })
+    .click();
+  await page.getByLabel("What exact time tomorrow morning?").fill("9 AM");
+  await page
+    .getByRole("button", { name: "Use this answer", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Review and confirm" }),
+  ).toBeVisible();
+  expect(
+    (await (await page.request.get("/api/reminders")).json()).items,
+  ).toHaveLength(0);
+  await page.getByLabel("Title", { exact: true }).fill("Corrected AI report");
+  await page.getByLabel("Date", { exact: true }).fill(date(2));
+  await page
+    .getByRole("button", { name: "Save reminder", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/app\/reminders\/[\w-]+$/);
+  const parsedId = new URL(page.url()).pathname.split("/").at(-1)!;
+  const parsed = (
+    await (await page.request.get(`/api/reminders/${parsedId}`)).json()
+  ).reminder;
+  expect(parsed.title).toBe("Corrected AI report");
+  expect(parsed.dueDate).toBe(date(2));
+  expect(parsed.sourceText).toBe(source);
+  expect(
+    (
+      await page.request.delete(`/api/reminders/${parsedId}`, {
+        headers: { origin: baseURL! },
+        data: { expectedRevision: parsed.revision },
+      })
+    ).status(),
+  ).toBe(200);
+  await page.unroute("**/api/ai/parse");
+  await page.goto("/app/new");
+  await page
+    .getByRole("button", { name: "Enter manually", exact: true })
+    .click();
   await page
     .getByLabel("Title", { exact: true })
     .fill("Browser manual reminder");

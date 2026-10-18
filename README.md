@@ -2,7 +2,7 @@
 
 A personal reminder app in development. See [requirements](./prd.md), [confirmed decisions](./docs/decisions.md), and the [phased plan](./TODO.md).
 
-Phase 1 foundation is verified with Neon connectivity and real PostgreSQL transaction/locking tests. Phase 2 adds email/password accounts, Google OAuth configuration, server-enforced tester access, isolated time-zone preferences, and atomic shared rate limits. Phase 3 now provides manual reminder CRUD, explicit deadlines/time zones, and durable transactional schedules. See [reminder behavior and APIs](./docs/reminders.md).
+Phases 1–3 provide the database foundation, authentication, manual reminder CRUD, and durable schedules. Phase 4 adds Gemini text interpretation, clarification, editable confirmation, optional browser voice capture, and manual fallback. See [reminder behavior](./docs/reminders.md) and [text/voice setup](./docs/ai.md).
 
 ## Local setup
 
@@ -39,4 +39,4 @@ Keep environment files and Azure local settings out of Git. Only `NEXT_PUBLIC_AP
 
 Tester access defaults to server-enforced allowlist mode. Set `TESTER_ACCESS_MODE=all` to explicitly allow everyone (`public` is an alias). SMTP recipient approval stays separate for Phase 5. Profile time-zone changes affect new reminders only.
 
-Vercel and independent Azure deployment are later phases. Neon connectivity is verified; Google credentials and live OAuth exchange remain pending. AI parsing, SMTP delivery, and hosted deployment are not implemented. Configured Gemini/SMTP keys are not used by manual reminder workflows.
+Vercel and independent Azure deployment are later phases. Neon connectivity and live Gemini parsing are verified; live Google OAuth and physical microphone checks remain pending. SMTP delivery and hosted deployment are not implemented. Manual reminder workflows do not require Gemini or SMTP.

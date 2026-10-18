@@ -40,3 +40,7 @@ The full audit still reports the nine existing tooling findings (four moderate, 
 ## Phase 3 time handling — October 18, 2026
 
 Pinned @js-temporal/polyfill 0.5.1 for explicit IANA time-zone/DST disambiguation on Node 22. Server conversion, fixed-clock unit tests, PostgreSQL transactions, and the production build are verified. The dependency installation reports the same nine previously documented tooling advisories; no forced dependency downgrade was applied. Browser tests use a separate Next.js output directory to coexist with a developer server.
+
+## Phase 4 Gemini — October 18, 2026
+
+Pinned the official @google/genai SDK 2.30.0 with server-configured `gemini-3.8-flash`. Live structured parsing and clarification passed using the configured key on Node 22.13.1. SDK retries are explicitly disabled and requests have a 25-second deadline. Installation reports the same nine existing tooling advisories.

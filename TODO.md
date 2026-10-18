@@ -23,17 +23,17 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 
 ## Progress tracker
 
-| Phase | Outcome                                         | Status                                 |
-| ----- | ----------------------------------------------- | -------------------------------------- |
-| 1     | Repository, runtime, database foundation        | Complete                               |
-| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending |
-| 3     | Manual reminder CRUD and durable schedules      | Complete                               |
-| 4     | Confirmed AI parsing and optional voice capture | Not started                            |
-| 5     | SMTP delivery, attempts, and retries            | Not started                            |
-| 6     | Independently deployed Azure timer worker       | Not started                            |
-| 7     | Complete mobile UI and installable PWA          | Not started                            |
-| 8     | Production deployment and operational hardening | Not started                            |
-| 9     | Reproducible documentation and handoff          | Not started                            |
+| Phase | Outcome                                         | Status                                      |
+| ----- | ----------------------------------------------- | ------------------------------------------- |
+| 1     | Repository, runtime, database foundation        | Complete                                    |
+| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending      |
+| 3     | Manual reminder CRUD and durable schedules      | Complete                                    |
+| 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending |
+| 5     | SMTP delivery, attempts, and retries            | Not started                                 |
+| 6     | Independently deployed Azure timer worker       | Not started                                 |
+| 7     | Complete mobile UI and installable PWA          | Not started                                 |
+| 8     | Production deployment and operational hardening | Not started                                 |
+| 9     | Reproducible documentation and handoff          | Not started                                 |
 
 ## Confirmed implementation decisions
 
@@ -167,19 +167,19 @@ Exit gate:
 
 Expected files: `src/services/ai/`, parse schemas, `src/app/api/ai/parse/route.ts`, confirmation/clarification UI, speech recognition hook/control, provider fixtures and tests.
 
-- [ ] Select a supported Gemini SDK/model using current official documentation; keep model selection/configuration server-side.
-- [ ] Define strict structured parse output: title, optional description/explicit priority, local deadline fields, deadline type, relevant zone, and clarification state/question.
-- [ ] Send current date/time and the user's persisted IANA zone as context; interpret relative dates in that zone.
-- [ ] Treat reminder text as untrusted data, validate provider output with Zod, and revalidate all confirmed fields independently on save.
-- [ ] Add protected parsing with request limits, durable rate limiting from D8, bounded provider timeout/retries, and sanitized errors.
-- [ ] Preserve original input through parsing, clarification, provider errors, manual fallback, and confirmation edits.
-- [ ] Handle missing dates/times, ambiguous weekdays, vague phrases such as “morning,” and DST ambiguity through clarification rather than silently inventing a deadline.
-- [ ] Show an editable confirmation form and save only after explicit user confirmation; parsing never writes reminders or triggers notifications.
-- [ ] Implement manual creation fallback for unavailable, rate-limited, malformed, and timed-out responses.
-- [ ] Add feature-detected browser speech recognition, start/stop states, editable transcription, and cleanup on navigation/unmount.
-- [ ] Request microphone access only on user action; explain unsupported browsers, permission denial, and recognition errors while retaining text input.
-- [ ] Test valid/malformed/provider-error responses, relative dates with a fixed clock, clarification, input preservation, and no mutation during parse.
-- [ ] E2E-test parse → correction → confirmation → persisted reminder using deterministic provider fixtures; separately record a real Gemini smoke check.
+- [x] Select a supported Gemini SDK/model using current official documentation; keep model selection/configuration server-side.
+- [x] Define strict structured parse output: title, optional description/explicit priority, local deadline fields, deadline type, relevant zone, and clarification state/question.
+- [x] Send current date/time and the user's persisted IANA zone as context; interpret relative dates in that zone.
+- [x] Treat reminder text as untrusted data, validate provider output with Zod, and revalidate all confirmed fields independently on save.
+- [x] Add protected parsing with request limits, durable rate limiting from D8, bounded provider timeout/retries, and sanitized errors.
+- [x] Preserve original input through parsing, clarification, provider errors, manual fallback, and confirmation edits.
+- [x] Handle missing dates/times, ambiguous weekdays, vague phrases such as “morning,” and DST ambiguity through clarification rather than silently inventing a deadline.
+- [x] Show an editable confirmation form and save only after explicit user confirmation; parsing never writes reminders or triggers notifications.
+- [x] Implement manual creation fallback for unavailable, rate-limited, malformed, and timed-out responses.
+- [x] Add feature-detected browser speech recognition, start/stop states, editable transcription, and cleanup on navigation/unmount.
+- [x] Request microphone access only on user action; explain unsupported browsers, permission denial, and recognition errors while retaining text input.
+- [x] Test valid/malformed/provider-error responses, relative dates with a fixed clock, clarification, input preservation, and no mutation during parse.
+- [x] E2E-test parse → correction → confirmation → persisted reminder using deterministic provider fixtures; separately record a real Gemini smoke check.
 - [ ] Manually verify supported voice capture and unsupported/denied fallbacks on representative browsers.
 
 Exit gate:
@@ -388,3 +388,14 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Configuration evidence: local Gemini and SMTP settings are present; the owner reports a successful SMTP test. Phase 3 performs no AI interpretation or SMTP sends. Existing dependency-tool advisories remain documented. Live Google OAuth remains a separate Phase 2 external gate because its expected client credential variables are absent.
 - Documentation: updated README, migration guide, decisions, corrected PRD example, and `docs/reminders.md` with API, time, concurrency, transaction, and verification behavior.
 - Next task: Phase 4 — Gemini parsing, editable confirmation/clarification, manual fallback, and browser voice capture. Delivery and the timer worker remain Phases 5–6.
+
+### October 18, 2026 — Phase 4 implemented; live microphone gate open
+
+- Added natural-language capture, clarification answers, editable confirmation, and explicit-save behavior to New reminder. Original text survives errors and manual fallback and is persisted with confirmed reminders. Existing manual/edit workflows remain available.
+- Added strict Zod provider output, fixed local date/time context from persisted preferences, Temporal calendar/DST validation, and independent save validation. Parsing treats user input as data and cannot create reminders or schedules.
+- Protected `/api/ai/parse` with sessions/tester policy, same-origin checks, 32 KiB bodies, bounded text/history, PostgreSQL-backed ten-per-minute user limits, sanitized errors, a 25-second provider deadline and no automatic retries.
+- Pinned official `@google/genai` 2.30.0; server-only model configuration defaults to `gemini-3.8-flash`. Two real synthetic provider requests passed: tomorrow at 3 PM across a UTC/Auckland date boundary, and clarification for tomorrow morning. `npm run ai:check` repeats these without database access or saved reminders.
+- Added feature-detected browser speech recognition with click-to-start access, stop/listening states, editable transcription, permission/service-error messaging, text fallback and unmount cleanup. Physical microphone capture and representative browser permission behavior remain pending; the Phase 4 exit gate stays open for those hands-on checks.
+- Verification kept focused per owner preference: four new unit cases (32 total pass), one expanded existing browser journey, lint, TypeScript, formatting and production build. The browser journey verifies real provider-unavailable behavior, retained text, deterministic clarification, no reminders before confirmation, corrected saved title/date, original source persistence, and continued manual CRUD/isolation. An initially ambiguous browser error selector was scoped and the rerun passed.
+- Added `docs/ai.md`, environment/model setup, README status and compatibility notes. No migration was needed. Existing dependency tooling advisories remain unchanged. No SMTP delivery or Azure worker work is claimed.
+- Next task: Phase 5 email delivery. Outstanding external gates: live microphone checks and the separate Phase 2 Google OAuth exchange.

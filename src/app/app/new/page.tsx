@@ -1,7 +1,7 @@
 import { requirePageSession } from "@/lib/auth/session";
 import { getDatabase } from "@/lib/db/server";
 import { readPreferences } from "@/repositories/preferences";
-import { ReminderForm } from "@/components/reminder-form";
+import { ReminderCapture } from "@/components/reminder-capture";
 import Link from "next/link";
 export default async function NewReminderPage() {
   const { owner } = await requirePageSession();
@@ -18,7 +18,7 @@ export default async function NewReminderPage() {
           .
         </p>
       )}
-      <ReminderForm
+      <ReminderCapture
         timeZone={preferences.timeZone}
         detectTimeZone={!preferences.reviewedAt}
       />

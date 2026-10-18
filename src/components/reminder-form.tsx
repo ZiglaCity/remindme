@@ -1,6 +1,7 @@
 "use client";
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import type { ReminderDraft } from "@/lib/validation/ai";
 const subscribe = () => () => {};
 const browserZone = () => {
   try {
@@ -26,11 +27,15 @@ export type ReminderFormInitial = {
 export function ReminderForm({
   timeZone,
   initial,
+  draft,
+  sourceText,
   detectTimeZone = false,
   onSaved,
 }: {
   timeZone: string;
   initial?: ReminderFormInitial;
+  draft?: ReminderDraft;
+  sourceText?: string;
   detectTimeZone?: boolean;
   onSaved?: (saved: {
     revision: number;
@@ -38,16 +43,17 @@ export function ReminderForm({
   }) => void;
 }) {
   const router = useRouter();
+  const values = initial ?? draft;
   const detectedZone = useSyncExternalStore(
     subscribe,
     browserZone,
     () => timeZone,
   );
   const [enteredZone, setEnteredZone] = useState<string | null>(
-    initial?.deadline.timeZone ?? null,
+    values?.deadline.timeZone ?? null,
   );
   const currentZone = enteredZone ?? (detectTimeZone ? detectedZone : timeZone);
-  const [kind, setKind] = useState(initial?.deadline.type ?? "date_time");
+  const [kind, setKind] = useState(values?.deadline.type ?? "date_time");
   const [revision, setRevision] = useState(initial?.revision);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +80,7 @@ export function ReminderForm({
           priority: String(form.get("priority")),
           deadline,
           ...(initial ? { expectedRevision: revision } : {}),
+          ...(!initial && sourceText ? { sourceText } : {}),
         };
         setBusy(true);
         try {
@@ -114,7 +121,7 @@ export function ReminderForm({
             name="title"
             required
             maxLength={160}
-            defaultValue={initial?.title ?? ""}
+            defaultValue={values?.title ?? ""}
             className={field}
           />
         </label>
@@ -124,7 +131,7 @@ export function ReminderForm({
             name="description"
             rows={3}
             maxLength={2000}
-            defaultValue={initial?.description ?? ""}
+            defaultValue={values?.description ?? ""}
             className={field}
           />
         </label>
@@ -150,7 +157,7 @@ export function ReminderForm({
             <select
               id="reminder-priority"
               name="priority"
-              defaultValue={initial?.priority ?? "normal"}
+              defaultValue={values?.priority ?? "normal"}
               className={field}
             >
               <option value="low">Low</option>
@@ -168,7 +175,7 @@ export function ReminderForm({
               required
               min="0001-01-01"
               max="9999-12-31"
-              defaultValue={initial?.deadline.date ?? ""}
+              defaultValue={values?.deadline.date ?? ""}
               className={field}
             />
           </label>
@@ -180,7 +187,7 @@ export function ReminderForm({
                 name="time"
                 required
                 step={60}
-                defaultValue={initial?.deadline.time ?? ""}
+                defaultValue={values?.deadline.time ?? ""}
                 className={field}
               />
             </label>

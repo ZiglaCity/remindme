@@ -26,6 +26,10 @@ export const webEnvSchema = databaseEnvSchema.extend({
   GOOGLE_CLIENT_ID: optionalText,
   GOOGLE_CLIENT_SECRET: optionalText,
   GEMINI_API_KEY: optionalText,
+  GEMINI_MODEL: z
+    .string()
+    .regex(/^gemini-[a-z0-9.-]+$/)
+    .default("gemini-3.8-flash"),
   TESTER_ACCESS_MODE: z
     .enum(["allowlist", "public", "all"])
     .default("allowlist"),
