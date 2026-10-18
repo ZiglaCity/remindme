@@ -1,0 +1,9 @@
+node_modules/
+.npm-cache/
+.next/
+package-lock.json
+migrations/meta/
+playwright-report/
+test-results/
+prd.md
+next-env.d.ts

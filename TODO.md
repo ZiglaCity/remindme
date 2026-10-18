@@ -23,32 +23,34 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 
 ## Progress tracker
 
-| Phase | Outcome | Status |
-| --- | --- | --- |
-| 1 | Repository, runtime, database foundation | Not started |
-| 2 | Authentication and ownership boundaries | Not started |
-| 3 | Manual reminder CRUD and durable schedules | Not started |
-| 4 | Confirmed AI parsing and optional voice capture | Not started |
-| 5 | SMTP delivery, attempts, and retries | Not started |
-| 6 | Independently deployed Azure timer worker | Not started |
-| 7 | Complete mobile UI and installable PWA | Not started |
-| 8 | Production deployment and operational hardening | Not started |
-| 9 | Reproducible documentation and handoff | Not started |
+| Phase | Outcome                                         | Status                                       |
+| ----- | ----------------------------------------------- | -------------------------------------------- |
+| 1     | Repository, runtime, database foundation        | Local foundation verified; Neon gate pending |
+| 2     | Authentication and ownership boundaries         | Not started                                  |
+| 3     | Manual reminder CRUD and durable schedules      | Not started                                  |
+| 4     | Confirmed AI parsing and optional voice capture | Not started                                  |
+| 5     | SMTP delivery, attempts, and retries            | Not started                                  |
+| 6     | Independently deployed Azure timer worker       | Not started                                  |
+| 7     | Complete mobile UI and installable PWA          | Not started                                  |
+| 8     | Production deployment and operational hardening | Not started                                  |
+| 9     | Reproducible documentation and handoff          | Not started                                  |
 
-## Decisions to settle during implementation
+## Confirmed implementation decisions
 
-These are unresolved details, not changes to the locked product decisions. Record the chosen behavior and its tests before implementing dependent code.
+The owner confirmed D1–D10 on October 18, 2026. The full policies and acceptance tests are preserved in [docs/decisions.md](./docs/decisions.md). These decisions govern implementation where they refine PRD behavior.
 
-- [ ] D1 — Verify current official Node.js LTS, Next.js, Better Auth, Drizzle/Neon, and Azure Functions compatibility. Pin compatible versions and one package manager/lockfile; do not guess runtime support from memory.
-- [ ] D2 — Specify the schedule anchor after deadline edits and reopening. Proposed: retain original `created_at` as the formula anchor and omit thresholds at or before the operation's clock time. If choosing a new anchor, document it explicitly rather than silently changing the PRD's formula.
-- [ ] D3 — Choose a time-zone library with explicit DST disambiguation. Proposed: require clarification for nonexistent or repeated local times, rather than silently shifting a deadline.
-- [ ] D4 — Define catch-up behavior for delayed notifications, including multiple due thresholds for one reminder and deadlines already passed during an outage. Preserve overdue work, bound processing, and document any suppression/coalescing policy before implementing it.
-- [ ] D5 — Define reopen behavior, idempotent repeated completion/deletion, past-deadline reopening, and archive support. Archiving must cancel work if exposed; do not add an archive UI without a product need.
-- [ ] D6 — Define title/source/description limits, optional priority values, pagination limits, rate limits, retry intervals and cap, queue batch/concurrency limits, and lease duration. Keep operational limits configurable with safe bounds.
-- [ ] D7 — Choose a database transaction-capable connection strategy for both runtimes. Validate that the driver actually supports the worker's row locks and multi-statement transactions.
-- [ ] D8 — Choose durable rate-limit storage suitable for serverless instances; process-local counters alone cannot enforce a shared limit.
-- [ ] D9 — Confirm small-tester registration/access policy and SMTP recipient safeguards given intentionally unverified email/password addresses. Do not add insecure account linking or recovery shortcuts.
-- [ ] D10 — Preserve existing reminder instants when changing time-zone preferences. Proposed V1: changes affect new reminders only; any date-only reinterpretation requires a separate explicit action and transactional rescheduling.
+- D1: verify official compatibility; pin exact dependencies and one lockfile. See [compatibility evidence](./docs/compatibility.md).
+- D2: preserve original creation anchor on edits/reopening; omit thresholds at or before now.
+- D3: date-only means 23:59 local; ambiguous/nonexistent DST times require clarification.
+- D4: coalesce due thresholds to the most advanced; audit cancellation reasons. Cancel unsent threshold work after the deadline as `deadline_passed`.
+- D5: completion/deletion are idempotent; deletion is soft; reopening retains creation anchor; no archive UI in V1.
+- D6: title 160, description 2,000, source 4,000 characters; priority low/normal/high (normal default); pagination 20/max 100; AI 10/min/user; auth 10/15min/key; SMTP delays 1/5/15/60 minutes, five attempts; batch 25, concurrency 5, lease five minutes; validate configurable bounds.
+- D7: transaction-capable PostgreSQL driver in both runtimes; verify row locks using real PostgreSQL.
+- D8: atomic PostgreSQL-backed shared rate limiting with expiry/cleanup and HTTP 429.
+- D9: server-enforced tester allowlist by default; separately approved SMTP recipients; verified Google identities; no automatic email-only account linking.
+- D10: profile time-zone changes affect new reminders only; existing deadlines, schedules, and interpretation zones remain unchanged.
+
+Implementation follow-ups: select the DST library in Phase 3, implement and test each policy in its phase, and verify actual Azure startup in Phase 6. Compatibility verification does not imply deployment verification.
 
 ## Phase 1 — Repository and foundation
 
@@ -56,28 +58,28 @@ Expected files: root package/TypeScript/lint/format configuration, `src/app/`, `
 
 ### Repository and runtime
 
-- [ ] Verify repository status and applicable repository instructions before implementation; preserve PRD and license.
-- [ ] Resolve D1 and record runtime/package-manager choices and compatibility sources.
-- [ ] Scaffold Next.js App Router with strict TypeScript and a minimal Tailwind styling foundation.
-- [ ] Establish server-only module boundaries so database, auth, Gemini, and SMTP secrets cannot enter client bundles.
-- [ ] Add scripts for development, production build/start, lint, type checking, unit/integration/E2E tests, migration generation, and migration application.
-- [ ] Add formatting, dependency lockfile, runtime version configuration, and ignores for secrets, local settings, build output, reports, and dependencies.
-- [ ] Configure Vitest and Playwright with an initial meaningful application smoke check.
-- [ ] Configure CI for clean install, lint, type checks, applicable tests, and build; distinguish tests requiring external configuration.
+- [x] Verify repository status and applicable repository instructions before implementation; preserve PRD and license.
+- [x] Record D1 runtime/package-manager choices and compatibility sources; verify installed versions with checks.
+- [x] Scaffold Next.js App Router with strict TypeScript and a minimal Tailwind styling foundation.
+- [x] Establish server-only module boundaries so database, auth, Gemini, and SMTP secrets cannot enter client bundles.
+- [x] Add scripts for development, production build/start, lint, type checking, unit/integration/E2E tests, migration generation, and migration application.
+- [x] Add formatting, dependency lockfile, runtime version configuration, and ignores for secrets, local settings, build output, reports, and dependencies.
+- [x] Configure Vitest and Playwright with an initial meaningful application smoke check.
+- [x] Configure CI for clean install, lint, type checks, applicable tests, and build; distinguish tests requiring external configuration.
 
 ### Environment and database
 
-- [ ] Add Zod environment validation separately for web, worker, and shared server settings. Avoid requiring SMTP or Gemini secrets in runtimes that do not use them.
-- [ ] Add placeholder-only `.env.example` covering database/direct migration URL if needed, Better Auth, OAuth, Gemini, SMTP, sender, and public application URL.
-- [ ] Define explicit local, test, preview, and production environment separation.
+- [x] Add Zod environment validation separately for web, worker, and shared server settings. Avoid requiring SMTP or Gemini secrets in runtimes that do not use them.
+- [x] Add placeholder-only `.env.example` covering database/direct migration URL if needed, Better Auth, OAuth, Gemini, SMTP, sender, and public application URL.
+- [x] Define explicit local, test, preview, and production environment separation.
 - [ ] Set up a development Neon database and an isolated integration-test database/branch; never reset production data in tests.
-- [ ] Resolve D7, configure Drizzle, and verify a real connection with bounded timeout behavior.
-- [ ] Establish migration generation/review/application workflow and an initial versioned migration where needed. Never use schema push as the production release process.
-- [ ] Document local startup, required credentials, migration commands, and how to run checks.
+- [ ] Configure confirmed D7 using Drizzle/node-postgres and verify a real connection with bounded timeout behavior.
+- [x] Establish migration generation/review/application workflow. No product tables exist yet; first auth migration is explicitly deferred to Phase 2. Never use schema push as the production release process.
+- [x] Document local startup, required credentials, migration commands, and how to run checks.
 
 Exit gate:
 
-- [ ] A clean checkout installs, starts locally, passes foundation checks, and builds.
+- [x] A clean lockfile installation succeeds; the app starts locally, passes foundation checks, and builds.
 - [ ] Development database connectivity and migration execution are verified; missing external credentials are recorded as blockers.
 
 ## Phase 2 — Authentication and user isolation
@@ -92,8 +94,8 @@ Expected files: `src/lib/auth/`, auth schema and migration, preference schema/re
 - [ ] Configure Google OAuth with environment-specific origins, provider credentials, and documented callback URLs.
 - [ ] Prevent automatic linking merely on matching email strings; explicitly configure and test provider/account collision behavior.
 - [ ] Verify supported password hashing and production cookie settings: HttpOnly, Secure, and appropriate SameSite.
-- [ ] Enforce sessions on the server for protected pages and APIs; handle expired/revoked sessions consistently.
-- [ ] Add auth rate limiting and verify trusted-origin/CSRF handling for cookie-authenticated mutations.
+- [ ] Enforce sessions and the D9 tester allowlist on the server for protected pages/APIs; handle expired/revoked sessions and non-approved accounts consistently.
+- [ ] Add PostgreSQL-backed atomic auth rate limiting (D6/D8), cleanup and HTTP 429; verify trusted-origin/CSRF handling for cookie-authenticated mutations.
 - [ ] Document that email/password addresses are unverified and no self-service password recovery exists in V1.
 
 ### Preferences and ownership infrastructure
@@ -108,7 +110,7 @@ Exit gate:
 
 - [ ] Registration, password sign-in/out, reload persistence, and protected route rejection pass.
 - [ ] Google OAuth is verified in a suitable configured test environment; account collisions do not cause unsafe linking.
-- [ ] Preferences are isolated and unauthenticated/cross-user access is rejected. Extend these tests to every reminder path in Phase 3.
+- [ ] Preferences are isolated; unauthenticated, non-allowlisted, and cross-user access is rejected server-side. Verify Google identity claims and explicit public-access configuration. Extend ownership tests to every reminder path in Phase 3.
 
 ## Phase 3 — Reminder CRUD and deadline handling
 
@@ -117,7 +119,7 @@ Expected files: reminder/notification/attempt schemas and migration, `src/lib/va
 ### Data model and invariants
 
 - [ ] Create `reminders` with UUID ID, owner FK, title, nullable description/source text/priority, `due_at` TIMESTAMPTZ, original local `due_date`, deadline type, IANA zone, status, completion timestamp, schedule version, timestamps, and nullable soft-delete timestamp.
-- [ ] Create `scheduled_notifications` with reminder FK, threshold, version, scheduled instant, status, attempt count, retry time, processing timestamp, sent timestamp, provider ID, sanitized error code, and timestamps.
+- [ ] Create `scheduled_notifications` with reminder FK, threshold, version, scheduled instant, status, attempt count, retry time, processing timestamp, sent timestamp, provider ID, sanitized error code, nullable cancellation reason for D4 auditability, and timestamps.
 - [ ] Create `notification_attempts` for immutable attempt outcomes and sanitized errors; refine claim fencing fields in Phase 6 if needed.
 - [ ] Add database checks for valid statuses, deadline types, thresholds, and nonnegative counters; enforce unique `(reminder_id, schedule_version, threshold_percent)`.
 - [ ] Index owner/status/deadline queries, due pending/retry work, stale processing work, and attempt-history lookup.
@@ -126,7 +128,7 @@ Expected files: reminder/notification/attempt schemas and migration, `src/lib/va
 
 ### Deadline and scheduling domain
 
-- [ ] Resolve D2–D6 and D10 where they affect this phase; document resulting domain rules.
+- [ ] Implement confirmed D2–D6 and D10 with their acceptance tests; select a maintained DST-disambiguation library.
 - [ ] Implement strict request schemas for create/edit/status/settings operations with length and format limits; reject unexpected ownership/status fields.
 - [ ] Convert explicit local date/time and IANA zone to a UTC instant without using the host's local zone.
 - [ ] Convert date-only input to 23:59 local time while preserving `date_only`, local date, and interpretation zone.
@@ -189,7 +191,7 @@ Expected files: `src/lib/email/`, `src/services/notifications/`, attempt reposit
 
 - [ ] Configure Nodemailer from validated SMTP settings; validate port/TLS combinations and keep provider-specific behavior outside domain logic.
 - [ ] Implement escaped HTML and plain-text templates with title, deadline, interpretation zone, threshold context, and safe application links.
-- [ ] Resolve recipient from the persisted reminder owner; never accept an arbitrary recipient from an application request.
+- [ ] Resolve recipient from the persisted reminder owner and enforce D9 explicit SMTP recipient approval immediately before sending; never accept an arbitrary recipient from an application request.
 - [ ] Check active/not-deleted status and schedule version immediately before delivery.
 - [ ] Implement success/failure recording, attempt counts, timestamps, provider message IDs, and sanitized operational logs.
 - [ ] Classify transient, permanent, and uncertain errors; define bounded configurable exponential backoff and final failure behavior.
@@ -220,7 +222,7 @@ Expected files: `azure-functions/notification-scheduler/` entry point/package/ho
 - [ ] Recheck reminder status/deletion, schedule version, owner existence, recipient, and claim validity immediately before each send.
 - [ ] Record outcomes through the Phase 5 delivery service and guarded state transitions; preserve cancellation when completion/edit races with delivery.
 - [ ] Recover stale claims after a documented lease timeout and account for maximum SMTP duration; cap repeated crash recovery rather than retrying forever.
-- [ ] Implement and document D4 catch-up behavior after missed runs, including already-overdue reminders.
+- [ ] Implement D4: send only the most advanced overdue threshold per reminder; cancel coalesced work with `coalesced_catch_up` and all unsent work after deadline with `deadline_passed`; record audit reasons transactionally.
 - [ ] Log invocation/notification/reminder IDs, durations, attempts, queue age, and sanitized outcomes without reminder bodies or secrets.
 
 ### Failure and deployment verification
@@ -346,3 +348,15 @@ Next task:
 ```
 
 Initial checkpoint: planning complete; implementation has not started. Next task: Phase 1 repository/runtime compatibility and foundation setup.
+
+### October 18, 2026 — Phase 1 local foundation verified
+
+- Completed: recorded confirmed D1–D10; scaffolded Next.js/TypeScript/Tailwind; added server-only boundaries, separate runtime environment schemas, Drizzle/node-postgres connections, bounded database settings, migration commands, placeholders, tests, formatting, and CI configuration.
+- Files: root toolchain configuration and lockfile; `src/app/`, `src/lib/env/`, `src/lib/db/`, `scripts/db-check.ts`, `tests/`, `.github/workflows/checks.yml`, documentation, and the Next.js-generated `AGENTS.md` (retained as instructed by the framework).
+- Compatibility: Node 22, npm 11.21.1, exact dependency pins. Patched Vitest to 4.1.11 after audit; npm 11.21.1 resolved the host npm 11.4.1 Arborist crash. See `docs/compatibility.md` for evidence and remaining tooling limitations.
+- Passed: clean `npm ci` through the selected npm release; lint with no warnings after configuration cleanup; TypeScript; formatting; production build; seven unit tests; Chromium E2E smoke test (one passed); `git diff --check`.
+- Audit: zero production dependency vulnerabilities. Full report retains nine development-tool findings (four moderate, five high); no critical findings. Do not use forced major downgrades as an automatic fix.
+- Deferred by owner: no Neon database is available yet. `db:check` and the PostgreSQL integration test were attempted and reported missing configuration. Real connectivity, rollback, row-lock behavior, and CI execution have not been verified. Docker is installed locally but its engine is not running.
+- Migrations: tooling/workflow is ready. First product migration is deliberately deferred to the Better Auth schema in Phase 2; no artificial table or applied migration is claimed.
+- Remaining Phase 1 gate: provision development and isolated test Neon databases; privately configure `.env.local` and `.env.test.local`; run `npm run db:check` and `npm run test:integration`. The phase remains open until these checks pass.
+- Next: complete that database gate, then begin Phase 2 authentication and server-enforced tester access. No auth, reminder, AI, SMTP, Azure, or production deployment functionality is claimed yet.
