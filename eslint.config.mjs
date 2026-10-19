@@ -7,6 +7,7 @@ export default defineConfig([
   ...nextTs,
   globalIgnores([
     ".npm-cache/**",
+    "dist/**",
     ".next/**",
     ".next-e2e/**",
     "coverage/**",

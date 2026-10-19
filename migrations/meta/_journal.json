@@ -22,6 +22,13 @@
       "when": 1792346611234,
       "tag": "0002_noisy_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792370338048,
+      "tag": "0003_young_zarda",
+      "breakpoints": true
     }
   ]
 }

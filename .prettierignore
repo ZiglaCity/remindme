@@ -2,6 +2,7 @@ node_modules/
 .npm-cache/
 .next/
 .next-e2e/
+dist/
 package-lock.json
 migrations/meta/
 playwright-report/

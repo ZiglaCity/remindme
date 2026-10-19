@@ -24,17 +24,17 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 
 ## Progress tracker
 
-| Phase | Outcome                                         | Status                                      |
-| ----- | ----------------------------------------------- | ------------------------------------------- |
-| 1     | Repository, runtime, database foundation        | Complete                                    |
-| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending      |
-| 3     | Manual reminder CRUD and durable schedules      | Complete                                    |
-| 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending |
-| 5     | SMTP delivery, attempts, and retries            | Complete                                    |
-| 6     | Independently deployed Azure timer worker       | Not started                                 |
-| 7     | Complete mobile UI and installable PWA          | Not started                                 |
-| 8     | Production deployment and operational hardening | Not started                                 |
-| 9     | Reproducible documentation and handoff          | Not started                                 |
+| Phase | Outcome                                         | Status                                         |
+| ----- | ----------------------------------------------- | ---------------------------------------------- |
+| 1     | Repository, runtime, database foundation        | Complete                                       |
+| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending         |
+| 3     | Manual reminder CRUD and durable schedules      | Complete                                       |
+| 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending    |
+| 5     | SMTP delivery, attempts, and retries            | Complete                                       |
+| 6     | Independently deployed Azure timer worker       | Implemented locally; Azure deployment deferred |
+| 7     | Complete mobile UI and installable PWA          | Not started                                    |
+| 8     | Production deployment and operational hardening | Not started                                    |
+| 9     | Reproducible documentation and handoff          | Not started                                    |
 
 ## Confirmed implementation decisions
 
@@ -214,25 +214,25 @@ Expected files: `azure-functions/notification-scheduler/` entry point/package/ho
 
 ### Worker implementation
 
-- [ ] Build a Next.js-independent shared processor and independently deployable Azure Functions adapter; verify packaging includes shared code and runtime dependencies without importing Next.js-only modules.
-- [ ] Verify official runtime/plan support and configure the documented one-minute timer expression; include required storage coordination settings.
-- [ ] Atomically claim a bounded due batch with transactions and `FOR UPDATE SKIP LOCKED` or an equivalently verified PostgreSQL strategy.
-- [ ] Select both newly due work and retries whose effective eligibility time has arrived; never load the full queue.
-- [ ] Use short claim transactions; avoid holding database locks while waiting for SMTP.
-- [ ] Add claim ownership/fencing if necessary so an expired worker cannot overwrite a newer claim's result; add a reviewed migration for extra fields.
-- [ ] Implement bounded concurrency, per-run time budget, connection/query timeouts, graceful exit, and backpressure.
-- [ ] Recheck reminder status/deletion, schedule version, owner existence, recipient, and claim validity immediately before each send.
-- [ ] Record outcomes through the Phase 5 delivery service and guarded state transitions; preserve cancellation when completion/edit races with delivery.
-- [ ] Recover stale claims after a documented lease timeout and account for maximum SMTP duration; cap repeated crash recovery rather than retrying forever.
-- [ ] Implement D4: send only the most advanced overdue threshold per reminder; cancel coalesced work with `coalesced_catch_up` and all unsent work after deadline with `deadline_passed`; record audit reasons transactionally.
-- [ ] Log invocation/notification/reminder IDs, durations, attempts, queue age, and sanitized outcomes without reminder bodies or secrets.
+- [x] Build a Next.js-independent shared processor and independently deployable Azure Functions adapter; verify packaging includes shared code and runtime dependencies without importing Next.js-only modules.
+- [x] Verify official runtime/plan support and configure the documented one-minute timer expression; include required storage coordination settings.
+- [x] Atomically claim a bounded due batch with transactions and `FOR UPDATE SKIP LOCKED` or an equivalently verified PostgreSQL strategy.
+- [x] Select both newly due work and retries whose effective eligibility time has arrived; never load the full queue.
+- [x] Use short claim transactions; avoid holding database locks while waiting for SMTP.
+- [x] Add claim ownership/fencing if necessary so an expired worker cannot overwrite a newer claim's result; add a reviewed migration for extra fields.
+- [x] Implement bounded concurrency, per-run time budget, connection/query timeouts, graceful exit, and backpressure.
+- [x] Recheck reminder status/deletion, schedule version, owner existence, recipient, and claim validity immediately before each send.
+- [x] Record outcomes through the Phase 5 delivery service and guarded state transitions; preserve cancellation when completion/edit races with delivery.
+- [x] Recover stale claims after a documented lease timeout and account for maximum SMTP duration; cap repeated crash recovery rather than retrying forever.
+- [x] Implement D4: send only the most advanced overdue threshold per reminder; cancel coalesced work with `coalesced_catch_up` and all unsent work after deadline with `deadline_passed`; record audit reasons transactionally.
+- [x] Log invocation/notification/reminder IDs, durations, attempts, queue age, and sanitized outcomes without reminder bodies or secrets.
 
 ### Failure and deployment verification
 
-- [ ] Integration-test overlapping workers, unique claims, stale recovery, late stale-worker updates, retry eligibility, partial batch failure, and bounded processing.
-- [ ] Test edit/complete/delete during claim and before send; verify old schedule versions cannot produce eligible future sends.
+- [x] Integration-test overlapping workers, unique claims, stale recovery, late stale-worker updates, retry eligibility, partial batch failure, and bounded processing.
+- [x] Test edit/complete/delete during claim and before send; verify old schedule versions cannot produce eligible future sends.
 - [ ] Simulate database disconnect/wake-up delay, SMTP timeout, worker crash before send, and crash after SMTP acceptance before status persistence.
-- [ ] Verify recorded sent work is skipped; document the residual SMTP acceptance window and post-final-check cancellation race.
+- [x] Verify recorded sent work is skipped; document the residual SMTP acceptance window and post-final-check cancellation race.
 - [ ] Verify subscription plan availability, region, storage requirements, outbound SMTP connectivity, and resource costs before provisioning.
 - [ ] Deploy a development function with its own database/SMTP settings; verify real timer executions, Neon access, receipt, persisted status, and stale recovery.
 
@@ -411,3 +411,16 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Live evidence: SMTP TLS/authentication verified; the owner explicitly approved one test to the sole configured approved address. One connection-only verification failure occurred before any sending, then the synthetic delivery was accepted on its first send attempt and persisted with a provider message ID. The owner confirmed receipt in chat. The diagnostic reminder is completed with unused thresholds cancelled; no existing reminder was delivered by the test.
 - Added `docs/email.md` for configuration, guarded send procedure, provider limits, rotation, timeouts, residual duplicate/cancellation windows, and Phase 6 boundaries; updated README, migration and compatibility notes. No public sending endpoint was added. Authentication fixes from the preceding turn were preserved.
 - Next task: Phase 6 — independently deployed Azure timer, bounded queue claims, coalescing, lease recovery and worker failure handling. Automatic scheduled delivery is not enabled yet. UI redesign remains Phase 7.
+
+### October 19, 2026 — Phase 6 local worker implemented; Azure deferred by owner
+
+- Owner confirmed there is no Azure setup yet and requested local completion. No subscription, storage account, hosting plan, deployed function, new outbound test email or external timer execution was created. The Phase 6 hosted-delivery exit gate remains open; UI redesign stays Phase 7.
+- Added the shared bounded processor and reminder-first PostgreSQL `SKIP LOCKED` batch claims. Waves claim only immediately available send slots; examined reminders are capped per invocation. Due retries honor backoff, most-advanced overdue thresholds coalesce lower work, and inactive/deleted/outdated/past-deadline work is cancelled with reasons. SMTP stays outside transactions.
+- Extended claim fencing with a final lease check and reviewed/applied `0003_young_zarda.sql` in development and isolated test databases. `recovery_count` caps repeated crashes, including before the first SMTP attempt. Interrupted sending attempts become uncertain; late acceptance updates only that attempt's history and cannot overwrite a newer queue claim. Normal SMTP attempt limits remain enforced.
+- Added an independent Azure Functions v4 / Node 22 timer adapter, monitored `0 * * * * *` schedule, no startup run, host storage settings, five-minute host timeout, termination signal, private local-settings example disabled by default, and safe structured logs. Pinned SDK 4.16.5 and build-only esbuild 0.28.2 after checking official Microsoft runtime guidance.
+- Added `worker:build`, read-only `worker:check`, and guarded `worker:once` (no sending by default). The build bundles shared runtime code and rejects web-only dependencies; its minimal SDK package/lockfile, host configuration and `.funcignore` form the independent deployment artifact. Locked artifact installation and plain Node 22 loading passed; SDK test-mode warnings correctly indicate that this is not a running Azure/Core Tools host.
+- Verification: 38 unit checks; four queue integration cases plus all four existing delivery cases passing across the targeted runs; TypeScript, lint, formatting and production web/worker builds. Queue checks cover overlapping selectors, unique claims, next-wave progress, coalescing, past-deadline cancellation, expired-claim rejection, recovery backoff/cap, late acceptance, concurrency/admission budget, partial SMTP failure, deletion and replaced versions. Fault injection verifies sanitized database failure and shutdown admission; interrupted-send fixtures represent crashes before/after SMTP acknowledgement persistence.
+- Corrected a concurrency test's overstrict assumption that simultaneous selectors must fill both batches immediately: a candidate may change between selection and its locked recheck. The implementation safely returns a partial batch and proceeds to another candidate; the revised check verifies unique claims and eventual next-wave progress. A pre-existing Phase 5 formatting issue was normalized.
+- Live development queue inspection was read-only: no due, processing, stale or failed work at that checkpoint. No real SMTP send was executed in this phase. Root tool advisories remain unchanged; the minimal artifact SDK installation reports zero findings.
+- Added `docs/worker.md` with local/Core Tools setup, budget/lease semantics, package/publish steps, subscription/region/runtime/cost preflight and recovery limitations. The Azure CLI/Core Tools and Azurite are not installed here. Actual host timing, Neon cold-wake behavior from Azure, cloud SMTP connectivity, subscription costs and deployed receipt/history/recovery verification remain pending, explicitly separate from local fixtures.
+- Next checkpoint: provision/sign into Azure when the owner is ready, verify region/runtime/costs, deploy the prepared artifact and close the external Phase 6 gate. Local implementation is ready for review; no active hosted scheduler is claimed.

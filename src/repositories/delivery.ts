@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import {
   reminders,
   scheduledNotifications,
@@ -15,6 +15,26 @@ import {
 } from "../lib/email/policy";
 
 export type DeliveryClaim = { id: string; token: string };
+export function claimIsCurrent(
+  notification: {
+    status: string;
+    claimToken: string | null;
+    processingStartedAt: Date | null;
+  },
+  claim: DeliveryClaim,
+  now: Date,
+  leaseSeconds: number,
+) {
+  return (
+    notification.status === "processing" &&
+    notification.claimToken === claim.token &&
+    Boolean(
+      notification.processingStartedAt &&
+      notification.processingStartedAt.getTime() + leaseSeconds * 1000 >
+        now.getTime(),
+    )
+  );
+}
 export async function deliveryContext(db: Database, id: string) {
   const [row] = await db
     .select({
@@ -104,6 +124,7 @@ export async function beginAttempt(
   claim: DeliveryClaim,
   env: EmailConfiguration,
   now: Date,
+  leaseSeconds = 300,
 ) {
   const context = await deliveryContext(db, claim.id);
   if (!context) return null;
@@ -121,8 +142,7 @@ export async function beginAttempt(
     if (
       !reminder ||
       !notification ||
-      notification.status !== "processing" ||
-      notification.claimToken !== claim.token
+      !claimIsCurrent(notification, claim, now, leaseSeconds)
     )
       return null;
     // A token can start only one attempt, including concurrent duplicate invocations.
@@ -156,15 +176,13 @@ export async function beginAttempt(
           updatedAt: now,
         })
         .where(eq(scheduledNotifications.id, claim.id));
-      await tx
-        .insert(notificationAttempts)
-        .values({
-          id: claim.token,
-          notificationId: claim.id,
-          attemptedAt: now,
-          result: "blocked",
-          errorCategory: code,
-        });
+      await tx.insert(notificationAttempts).values({
+        id: claim.token,
+        notificationId: claim.id,
+        attemptedAt: now,
+        result: "blocked",
+        errorCategory: code,
+      });
       return null;
     }
     if (
@@ -176,14 +194,12 @@ export async function beginAttempt(
       .update(scheduledNotifications)
       .set({ attemptCount: notification.attemptCount + 1, updatedAt: now })
       .where(eq(scheduledNotifications.id, claim.id));
-    await tx
-      .insert(notificationAttempts)
-      .values({
-        id: claim.token,
-        notificationId: claim.id,
-        attemptedAt: now,
-        result: "sending",
-      });
+    await tx.insert(notificationAttempts).values({
+      id: claim.token,
+      notificationId: claim.id,
+      attemptedAt: now,
+      result: "sending",
+    });
     return { attemptNumber: notification.attemptCount + 1 };
   });
 }
@@ -236,7 +252,18 @@ export async function finishAttempt(
       .where(
         and(
           eq(notificationAttempts.id, claim.token),
-          eq(notificationAttempts.result, "sending"),
+          or(
+            eq(notificationAttempts.result, "sending"),
+            accepted
+              ? and(
+                  eq(notificationAttempts.result, "uncertain"),
+                  eq(
+                    notificationAttempts.errorCategory,
+                    "worker_lease_expired",
+                  ),
+                )
+              : undefined,
+          ),
         ),
       );
     if (

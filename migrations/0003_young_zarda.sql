@@ -1,0 +1,3 @@
+ALTER TABLE "scheduled_notifications" DROP CONSTRAINT "notification_counters_valid";--> statement-breakpoint
+ALTER TABLE "scheduled_notifications" ADD COLUMN "recovery_count" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "scheduled_notifications" ADD CONSTRAINT "notification_counters_valid" CHECK ("scheduled_notifications"."attempt_count" >= 0 and "scheduled_notifications"."recovery_count" >= 0 and "scheduled_notifications"."schedule_version" > 0);

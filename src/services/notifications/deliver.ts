@@ -4,6 +4,7 @@ import {
   deliveryContext,
   finishAttempt,
   suppression,
+  claimIsCurrent,
   type DeliveryClaim,
   type DeliveryOutcome,
 } from "../../repositories/delivery";
@@ -17,9 +18,20 @@ export function createDeliveryService(
   sender: EmailSender,
   env: EmailConfiguration,
   clock: Clock = () => new Date(),
+  options: {
+    leaseSeconds?: number;
+    log?: (fields: Record<string, string | number>) => void;
+  } = {},
 ) {
   return async (claim: DeliveryClaim) => {
-    const attempt = await beginAttempt(db, claim, env, clock());
+    const started = performance.now();
+    const attempt = await beginAttempt(
+      db,
+      claim,
+      env,
+      clock(),
+      options.leaseSeconds ?? 300,
+    );
     if (!attempt) return { status: "skipped" };
     // Fresh owner/state/claim check immediately before delivery; no transaction is held over SMTP.
     const context = await deliveryContext(db, claim.id);
@@ -28,8 +40,12 @@ export function createDeliveryService(
     if (
       !context ||
       reason ||
-      context.notification.status !== "processing" ||
-      context.notification.claimToken !== claim.token ||
+      !claimIsCurrent(
+        context.notification,
+        claim,
+        clock(),
+        options.leaseSeconds ?? 300,
+      ) ||
       !recipientApproved(context.email, env.SMTP_APPROVED_RECIPIENTS)
     ) {
       outcome = {
@@ -59,12 +75,22 @@ export function createDeliveryService(
       }
     }
     const status = await finishAttempt(db, claim, env, outcome, clock());
-    console.info("notification_delivery", {
+    const fields = {
       notificationId: claim.id,
+      reminderId: context?.reminder.id ?? "missing",
       attempt: attempt.attemptNumber,
+      durationMs: Math.round(performance.now() - started),
+      queueAgeMs: context
+        ? Math.max(
+            0,
+            clock().getTime() - context.notification.scheduledFor.getTime(),
+          )
+        : 0,
       outcome: outcome.kind === "failure" ? outcome.failure.code : outcome.kind,
       status,
-    });
+    };
+    if (options.log) options.log(fields);
+    else console.info("notification_delivery", fields);
     return { status };
   };
 }

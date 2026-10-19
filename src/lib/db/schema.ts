@@ -182,6 +182,7 @@ export const scheduledNotifications = pgTable(
     nextAttemptAt: instant("next_attempt_at"),
     processingStartedAt: instant("processing_started_at"),
     claimToken: uuid("claim_token"),
+    recoveryCount: integer("recovery_count").notNull().default(0),
     sentAt: instant("sent_at"),
     providerMessageId: text("provider_message_id"),
     lastErrorCode: text("last_error_code"),
@@ -214,7 +215,7 @@ export const scheduledNotifications = pgTable(
     ),
     check(
       "notification_counters_valid",
-      sql`${t.attemptCount} >= 0 and ${t.scheduleVersion} > 0`,
+      sql`${t.attemptCount} >= 0 and ${t.recoveryCount} >= 0 and ${t.scheduleVersion} > 0`,
     ),
   ],
 );

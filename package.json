@@ -16,6 +16,9 @@
     "db:check": "tsx scripts/db-check.ts",
     "ai:check": "tsx scripts/ai-check.ts",
     "smtp:check": "tsx scripts/smtp-check.ts",
+    "worker:build": "tsx scripts/build-worker.ts",
+    "worker:check": "tsx scripts/worker-check.ts",
+    "worker:once": "tsx scripts/worker-once.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
@@ -46,6 +49,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@azure/functions": "4.16.5",
     "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.20.5",
@@ -54,6 +58,7 @@
     "@types/react-dom": "19.3.0",
     "dotenv": "18.0.8",
     "drizzle-kit": "0.31.11",
+    "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.2",
     "prettier": "3.9.10",

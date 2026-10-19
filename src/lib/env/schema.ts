@@ -101,6 +101,13 @@ export const workerEnvSchema = databaseEnvSchema
   .extend({
     WORKER_BATCH_SIZE: integer(25, 100),
     WORKER_CONCURRENCY: integer(5, 10),
+    WORKER_RUN_BUDGET_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(180)
+      .max(240)
+      .default(240),
+    WORKER_MAX_RECOVERIES: integer(3, 10),
     PROCESSING_LEASE_SECONDS: z.coerce
       .number()
       .int()

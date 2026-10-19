@@ -6,6 +6,8 @@
 
 `0002_noisy_lady_ursula.sql` adds a nullable UUID claim token to scheduled notifications. Trusted delivery claims use it to prevent duplicate execution and stale outcome updates. The existing notification-attempt UUID stores the claim token, enforcing one attempt per claim without another table. No existing rows or history are removed.
 
+`0003_young_zarda.sql` adds a nonnegative `recovery_count`, defaulting to zero, and extends the counter constraint. It bounds repeated worker crashes even when they happen before an SMTP attempt starts. Apply it before running the Phase 6 worker; existing reminders and attempt history remain intact.
+
 After modifying the schema, run `npm run db:generate`, review the generated SQL and metadata, then run `npm run db:migrate` against development and isolated test databases. Commit SQL and Drizzle metadata together. Never modify an already-applied migration or use schema push against production.
 
 Use `DATABASE_DIRECT_URL` when a direct migration connection is needed. Keep credentials out of command arguments and source control. Production application of migrations requires a reviewed release procedure and backup/restore plan.

@@ -1,0 +1,15 @@
+{
+  "name": "remindme-notification-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "main": "worker.cjs",
+  "engines": {
+    "node": ">=22.13.1 <23"
+  },
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "4.16.5"
+  }
+}

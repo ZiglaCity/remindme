@@ -52,15 +52,13 @@ beforeEach(() => {
 });
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./migrations" });
-  await db
-    .insert(user)
-    .values(
-      ids.map((id, index) => ({
-        id,
-        name: "Delivery fixture",
-        email: emails[index],
-      })),
-    );
+  await db.insert(user).values(
+    ids.map((id, index) => ({
+      id,
+      name: "Delivery fixture",
+      email: emails[index],
+    })),
+  );
 });
 afterAll(async () => {
   try {

@@ -48,3 +48,7 @@ Pinned the official @google/genai SDK 2.30.0 with server-configured `gemini-3.8-
 ## Phase 5 SMTP — October 19, 2026
 
 Pinned Nodemailer 10.1.6, which supports Node >=20 and bundles TypeScript definitions. Verified on the selected Node 22 runtime. SMTP authentication/TLS verification, unit checks, PostgreSQL delivery integration checks and the application production build pass. The package installation reports the same nine existing tooling advisories. Delivery code has no Next.js runtime dependency and is ready for the separate Phase 6 adapter.
+
+## Phase 6 worker — October 19, 2026
+
+Selected Azure Functions programming model v4 / runtime v4 / Node 22 from current Microsoft documentation. Pinned SDK 4.16.5 and build-only esbuild 0.28.2. The independent artifact bundles shared runtime code and has its own minimal SDK lockfile; locked production installation and plain Node 22 loading passed. The loader correctly warns that it is outside a Functions host, so this establishes package loading rather than a real timer startup. Root dependency installation reports the same nine tooling findings; the minimal worker SDK installation reports zero. No Azure subscription, Core Tools host or deployed runtime was verified; deployment is explicitly deferred.
