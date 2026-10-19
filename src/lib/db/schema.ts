@@ -181,6 +181,7 @@ export const scheduledNotifications = pgTable(
     attemptCount: integer("attempt_count").notNull().default(0),
     nextAttemptAt: instant("next_attempt_at"),
     processingStartedAt: instant("processing_started_at"),
+    claimToken: uuid("claim_token"),
     sentAt: instant("sent_at"),
     providerMessageId: text("provider_message_id"),
     lastErrorCode: text("last_error_code"),

@@ -8,7 +8,7 @@ Set these privately in `.env.local`:
 
 - `DATABASE_URL`: development Neon connection URL, preserving provider TLS parameters. Prefer explicit `sslmode=verify-full`; current pg warns that the meaning of `require` will change in a future major release.
 - `BETTER_AUTH_SECRET`: high-entropy random secret, at least 32 characters. Keep separate secrets per environment.
-- `BETTER_AUTH_URL`: exact canonical origin, normally `http://localhost:3000` locally.
+- `BETTER_AUTH_URL`: the app's exact canonical origin, normally `http://localhost:3000` locally. This is **not** a Neon Auth endpoint: this app hosts Better Auth itself at `/api/auth` and uses Neon for PostgreSQL storage.
 - `NEXT_PUBLIC_APP_URL`: the application URL; contains no secrets.
 - `TESTER_ACCESS_MODE=allowlist`: default, denies access unless the stored account email matches `TESTER_EMAIL_ALLOWLIST` (comma-separated, trimmed, case-insensitive exact addresses).
 - `TESTER_ACCESS_MODE=all`: explicitly enables registration and application access for everyone. `public` is an equivalent compatibility alias. An unknown mode fails validation.

@@ -12,6 +12,8 @@ The authenticated, same-origin `POST /api/ai/parse` accepts `{ text, clarificati
 
 Voice uses feature-detected `SpeechRecognition`/`webkitSpeechRecognition`, starts only when the microphone button is clicked, and uses the browser language. Stop recording to edit the transcription before interpretation. Unsupported browsers, denied access, missing speech or service errors leave typing available. Recognition is aborted on navigation. Speech recognition can depend on the browser's external speech service; there is no separate application speech API or audio storage.
 
+October 19 voice fix: capture now uses continuous recognition and waits 15 seconds after speech ends before stopping. Interim results replace the previous hypothesis rather than being appended; native browser restarts retain the accumulated transcript and do not reset the silence deadline. Explicit Stop allows final results to arrive, and permission/service failures or navigation prevent automatic restarts. Recognition accuracy still depends on the selected browser language and its speech service.
+
 ## Verification
 
 `npm run ai:check` makes two synthetic live Gemini requests without connecting to the database: a relative-date example across a UTC/local date boundary and a vague-time clarification. Both passed on October 18, 2026. Unit checks cover structured output, fixed local context, invalid dates/DST and missing credentials. The focused browser journey uses deterministic provider responses for clarification and correction, the real unavailable-provider path, and real PostgreSQL persistence after explicit confirmation.

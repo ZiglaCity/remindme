@@ -50,7 +50,53 @@ export const smtpEnvSchema = z
   .refine(
     (value) => value.SMTP_PORT !== 465 || value.SMTP_SECURE,
     "Port 465 requires implicit TLS",
+  )
+  .refine(
+    (value) => ![25, 587].includes(value.SMTP_PORT) || !value.SMTP_SECURE,
+    "Ports 25 and 587 require STARTTLS",
   );
+const approvedRecipients = z
+  .string()
+  .default("")
+  .refine(
+    (value) =>
+      value
+        .split(",")
+        .every(
+          (address) =>
+            !address.trim() || z.email().safeParse(address.trim()).success,
+        ),
+    "Approved recipients must be exact email addresses",
+  );
+export const emailEnvSchema = z
+  .object({
+    APP_URL: z.url().refine((value) => {
+      const url = new URL(value);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        !url.username &&
+        !url.password
+      );
+    }),
+    SMTP_APPROVED_RECIPIENTS: approvedRecipients,
+    SMTP_MAX_ATTEMPTS: integer(5, 10),
+    SMTP_RETRY_DELAYS_SECONDS: z
+      .string()
+      .default("60,300,900,3600")
+      .transform((value) => value.split(",").map(Number))
+      .pipe(
+        z
+          .array(z.number().int().min(1).max(86400))
+          .min(1)
+          .max(9)
+          .refine((delays) =>
+            delays.every(
+              (delay, index) => index === 0 || delay >= delays[index - 1],
+            ),
+          ),
+      ),
+  })
+  .and(smtpEnvSchema);
 export const workerEnvSchema = databaseEnvSchema
   .extend({
     WORKER_BATCH_SIZE: integer(25, 100),
@@ -61,10 +107,8 @@ export const workerEnvSchema = databaseEnvSchema
       .min(300)
       .max(1800)
       .default(300),
-    SMTP_MAX_ATTEMPTS: integer(5, 10),
-    SMTP_APPROVED_RECIPIENTS: z.string().default(""),
   })
-  .and(smtpEnvSchema);
+  .and(emailEnvSchema);
 
 // Never print Zod's input values: they can contain credentials.
 export function parseEnvironment<T>(

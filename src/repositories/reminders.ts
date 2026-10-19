@@ -148,6 +148,7 @@ export async function cancelOutstanding(
       status: "cancelled",
       cancellationReason: reason,
       processingStartedAt: null,
+      claimToken: null,
       nextAttemptAt: null,
       updatedAt: now,
     })

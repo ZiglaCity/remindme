@@ -39,4 +39,4 @@ Keep environment files and Azure local settings out of Git. Only `NEXT_PUBLIC_AP
 
 Tester access defaults to server-enforced allowlist mode. Set `TESTER_ACCESS_MODE=all` to explicitly allow everyone (`public` is an alias). SMTP recipient approval stays separate for Phase 5. Profile time-zone changes affect new reminders only.
 
-Vercel and independent Azure deployment are later phases. Neon connectivity and live Gemini parsing are verified; live Google OAuth and physical microphone checks remain pending. SMTP delivery and hosted deployment are not implemented. Manual reminder workflows do not require Gemini or SMTP.
+Phase 5 adds SMTP delivery, persisted outcomes, bounded retries and a guarded `npm run smtp:check` command; see [email configuration and live checks](./docs/email.md). Automatic queue processing requires the Phase 6 Azure scheduler. Vercel/Azure deployment, live Google OAuth and representative physical microphone checks remain pending. Manual reminder workflows do not require Gemini or SMTP.

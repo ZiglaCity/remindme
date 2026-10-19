@@ -15,6 +15,13 @@
       "when": 1792336240581,
       "tag": "0001_nosy_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792346611234,
+      "tag": "0002_noisy_lady_ursula",
+      "breakpoints": true
     }
   ]
 }

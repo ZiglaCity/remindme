@@ -13,6 +13,7 @@ export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
   const admit = (email: string) => {
     if (!isTesterAllowed(email, env))
       throw new APIError("FORBIDDEN", {
+        code: "TESTER_ACCESS_DENIED",
         message: "Access is limited to approved testers.",
       });
   };

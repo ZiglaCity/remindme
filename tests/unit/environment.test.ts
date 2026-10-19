@@ -12,6 +12,7 @@ const web = {
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
 };
 const worker = {
+  APP_URL: "http://localhost:3000",
   DATABASE_URL: web.DATABASE_URL,
   SMTP_HOST: "smtp.example.com",
   SMTP_SECURE: "false",

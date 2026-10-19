@@ -44,3 +44,7 @@ Pinned @js-temporal/polyfill 0.5.1 for explicit IANA time-zone/DST disambiguatio
 ## Phase 4 Gemini — October 18, 2026
 
 Pinned the official @google/genai SDK 2.30.0 with server-configured `gemini-3.8-flash`. Live structured parsing and clarification passed using the configured key on Node 22.13.1. SDK retries are explicitly disabled and requests have a 25-second deadline. Installation reports the same nine existing tooling advisories.
+
+## Phase 5 SMTP — October 19, 2026
+
+Pinned Nodemailer 10.1.6, which supports Node >=20 and bundles TypeScript definitions. Verified on the selected Node 22 runtime. SMTP authentication/TLS verification, unit checks, PostgreSQL delivery integration checks and the application production build pass. The package installation reports the same nine existing tooling advisories. Delivery code has no Next.js runtime dependency and is ready for the separate Phase 6 adapter.

@@ -117,16 +117,20 @@ export function ReminderCapture({
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
-            disabled={!speech.supported || busy}
+            disabled={!speech.supported || busy || speech.stopping}
             onClick={speech.listening ? speech.stop : speech.start}
             aria-pressed={speech.listening}
             className="rounded-lg border border-stone-400 px-4 py-2 disabled:opacity-50"
           >
-            {speech.listening ? "Stop recording" : "Use microphone"}
+            {speech.stopping
+              ? "Finishing transcription…"
+              : speech.listening
+                ? "Stop recording"
+                : "Use microphone"}
           </button>
           <span role="status" className="text-sm text-stone-600">
             {speech.listening
-              ? "Listening… Stop to review and edit your transcription."
+              ? "Listening… Pauses up to 15 seconds are allowed. Stop to review and edit your transcription."
               : !speech.supported
                 ? "Voice input isn’t supported here. Type your reminder instead."
                 : "You can edit the transcription before continuing."}

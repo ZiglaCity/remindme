@@ -17,6 +17,7 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 - Establish a usable manual reminder flow before adding AI or email. Add basic functional screens in earlier phases; Phase 7 completes the UI and PWA.
 - Use an injectable clock, real PostgreSQL for transaction/concurrency tests, mocked AI/SMTP for automated tests, and dedicated test accounts for live checks.
 - Run relevant tests, lint, type checks, and applicable builds at each phase gate. Fix regressions before proceeding.
+- Keep new tests focused on risky behavior; prioritize implementation and avoid expanding unrelated test matrices (owner preference).
 - Update README, environment examples, and operational notes as behavior or configuration changes.
 - Record external checks as pending until performed; a mock or successful local build does not prove a deployed integration works.
 - Do not put credentials, real reminder contents, or private deployment values in this file or test fixtures.
@@ -29,7 +30,7 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 | 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending      |
 | 3     | Manual reminder CRUD and durable schedules      | Complete                                    |
 | 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending |
-| 5     | SMTP delivery, attempts, and retries            | Not started                                 |
+| 5     | SMTP delivery, attempts, and retries            | Complete                                    |
 | 6     | Independently deployed Azure timer worker       | Not started                                 |
 | 7     | Complete mobile UI and installable PWA          | Not started                                 |
 | 8     | Production deployment and operational hardening | Not started                                 |
@@ -190,22 +191,22 @@ Exit gate:
 
 Expected files: `src/lib/email/`, `src/services/notifications/`, attempt repository, email templates, guarded CLI test command, email tests, SMTP setup documentation.
 
-- [ ] Configure Nodemailer from validated SMTP settings; validate port/TLS combinations and keep provider-specific behavior outside domain logic.
-- [ ] Implement escaped HTML and plain-text templates with title, deadline, interpretation zone, threshold context, and safe application links.
-- [ ] Resolve recipient from the persisted reminder owner and enforce D9 explicit SMTP recipient approval immediately before sending; never accept an arbitrary recipient from an application request.
-- [ ] Check active/not-deleted status and schedule version immediately before delivery.
-- [ ] Implement success/failure recording, attempt counts, timestamps, provider message IDs, and sanitized operational logs.
-- [ ] Classify transient, permanent, and uncertain errors; define bounded configurable exponential backoff and final failure behavior.
-- [ ] Ensure sent/cancelled/terminal-failed work is not retried and retry writes cannot resurrect cancelled schedules.
-- [ ] Set connection/socket/send timeouts compatible with the planned worker lease and invocation budget.
-- [ ] Provide a CLI or documented non-public test procedure requiring an explicitly configured test destination; no public scheduler trigger endpoint.
-- [ ] Mock SMTP to test recipient isolation, escaped content, time-zone/threshold context, success, permanent failure, retry exhaustion, and inactive/version-mismatched reminders.
-- [ ] Send a live test email with test credentials and record SMTP acceptance, recipient receipt, and persisted outcome separately.
-- [ ] Document SMTP limits, credential rotation, and the crash-after-acceptance duplicate-send window; do not promise exactly-once delivery.
+- [x] Configure Nodemailer from validated SMTP settings; validate port/TLS combinations and keep provider-specific behavior outside domain logic.
+- [x] Implement escaped HTML and plain-text templates with title, deadline, interpretation zone, threshold context, and safe application links.
+- [x] Resolve recipient from the persisted reminder owner and enforce D9 explicit SMTP recipient approval immediately before sending; never accept an arbitrary recipient from an application request.
+- [x] Check active/not-deleted status and schedule version immediately before delivery.
+- [x] Implement success/failure recording, attempt counts, timestamps, provider message IDs, and sanitized operational logs.
+- [x] Classify transient, permanent, and uncertain errors; define bounded configurable backoff (D6 defaults: 1/5/15/60 minutes) and final failure behavior.
+- [x] Ensure sent/cancelled/terminal-failed work is not retried and retry writes cannot resurrect cancelled schedules.
+- [x] Set connection/socket/send timeouts compatible with the planned worker lease and invocation budget.
+- [x] Provide a CLI or documented non-public test procedure requiring an explicitly configured test destination; no public scheduler trigger endpoint.
+- [x] Mock SMTP to test recipient isolation, escaped content, time-zone/threshold context, success, permanent failure, retry exhaustion, and inactive/version-mismatched reminders.
+- [x] Send a live test email with test credentials and record SMTP acceptance, recipient receipt, and persisted outcome separately.
+- [x] Document SMTP limits, credential rotation, and the crash-after-acceptance duplicate-send window; do not promise exactly-once delivery.
 
 Exit gate:
 
-- [ ] A controlled live test reaches the intended recipient with recorded outcome; mocked failure/retry/isolation tests pass.
+- [x] A controlled live test reaches the intended recipient with recorded outcome; mocked failure/retry/isolation tests pass.
 
 ## Phase 6 — Azure scheduler and queue reliability
 
@@ -399,3 +400,14 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Verification kept focused per owner preference: four new unit cases (32 total pass), one expanded existing browser journey, lint, TypeScript, formatting and production build. The browser journey verifies real provider-unavailable behavior, retained text, deterministic clarification, no reminders before confirmation, corrected saved title/date, original source persistence, and continued manual CRUD/isolation. An initially ambiguous browser error selector was scoped and the rerun passed.
 - Added `docs/ai.md`, environment/model setup, README status and compatibility notes. No migration was needed. Existing dependency tooling advisories remain unchanged. No SMTP delivery or Azure worker work is claimed.
 - Next task: Phase 5 email delivery. Outstanding external gates: live microphone checks and the separate Phase 2 Google OAuth exchange.
+
+### October 19, 2026 — Voice correction and Phase 5 complete
+
+- Fixed premature microphone cutoff: enabled continuous recognition, separated native sessions from the user recording session, preserved accumulated text over early browser restarts, and allowed 15 seconds of inactivity after speech ends. Interim hypotheses replace prior hypotheses instead of duplicating text. Stop retains final results, shows a finishing state, and never restarts capture; navigation, permission denial and service failures release recognition and timers. Speech-service accuracy and physical-device behavior still need representative hands-on confirmation.
+- Added pinned Nodemailer 10.1.6 with bundled types, strict SMTP/TLS settings, escaped HTML/plain-text reminder templates, safe application links, exact persisted-owner recipient approval, guarded SMTP diagnostics, delivery repository/service, and safe outcome logs.
+- Added and applied reviewed `0002_noisy_lady_ursula.sql` to development and isolated test databases. Its nullable claim token fences delivery outcomes. One attempt UUID per token prevents concurrent duplicate execution. Cancellation clears tokens; stale writes cannot revive cancelled work. No database transaction stays open over SMTP.
+- Implemented explicit SMTP acceptance, permanent/transient/uncertain failures, bounded attempt counts, D6 retry delays, retry eligibility and deadline limits. Persisted histories retain acceptance even when completion cancels an in-flight queue row. Stable Message-ID aids tracing without claiming SMTP deduplication or exactly-once behavior.
+- Passed: 36 unit checks, four targeted PostgreSQL delivery integration cases, TypeScript, lint, formatting and production build. The targeted database checks cover owner recipient resolution, approval rejection, duplicate calls, inactive/replaced schedules, transient/permanent errors, early/exhausted retries, and completion during delivery. Voice checks cover corrected interim text, native restart continuity, silence timing, continued speech, explicit stop, final results and denial/disposal.
+- Live evidence: SMTP TLS/authentication verified; the owner explicitly approved one test to the sole configured approved address. One connection-only verification failure occurred before any sending, then the synthetic delivery was accepted on its first send attempt and persisted with a provider message ID. The owner confirmed receipt in chat. The diagnostic reminder is completed with unused thresholds cancelled; no existing reminder was delivered by the test.
+- Added `docs/email.md` for configuration, guarded send procedure, provider limits, rotation, timeouts, residual duplicate/cancellation windows, and Phase 6 boundaries; updated README, migration and compatibility notes. No public sending endpoint was added. Authentication fixes from the preceding turn were preserved.
+- Next task: Phase 6 — independently deployed Azure timer, bounded queue claims, coalescing, lease recovery and worker failure handling. Automatic scheduled delivery is not enabled yet. UI redesign remains Phase 7.
