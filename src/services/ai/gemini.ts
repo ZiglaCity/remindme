@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { modelOutput, parseInput } from "../../lib/validation/ai";
 import { AppError } from "../../lib/http/errors";
@@ -35,6 +35,11 @@ export function createGeminiParser(apiKey: string | undefined, model: string) {
           responseMimeType: "application/json",
           responseJsonSchema: z.toJSONSchema(modelOutput),
           maxOutputTokens: 2048,
+          // Extraction needs a short answer, not extended agent reasoning.
+          // Keep custom models on their own supported defaults.
+          ...(model === "gemini-3.8-flash"
+            ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+            : {}),
           abortSignal: signal ? AbortSignal.any([signal, deadline]) : deadline,
         },
       });

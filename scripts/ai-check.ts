@@ -30,6 +30,49 @@ try {
   console.log(
     "PASS: live Gemini requested clarification for a vague time. Nothing was saved.",
   );
+  for (const example of [
+    {
+      text: "Remind me to renew my subscription before January 1, 2027",
+      date: "2026-12-31",
+      time: "23:59",
+      type: "date_time",
+    },
+    {
+      text: "Remind me to renew my subscription by January 1, 2027",
+      date: "2027-01-01",
+      time: "",
+      type: "date_only",
+    },
+    {
+      text: "Remind me to call the dentist tomorrow at ate a.m.",
+      date: "2026-12-31",
+      time: "08:00",
+      type: "date_time",
+    },
+    {
+      text: "Remind me to submit the form on January 1, 2027 at 12 AM",
+      date: "2027-01-01",
+      time: "00:00",
+      type: "date_time",
+    },
+  ]) {
+    const result = await parse(
+      { text: example.text, clarification: [] },
+      "Pacific/Auckland",
+      new Date("2026-12-30T00:00:00Z"),
+    );
+    if (
+      result.status !== "ready" ||
+      result.draft.deadline.date !== example.date ||
+      result.draft.deadline.time !== example.time ||
+      result.draft.deadline.type !== example.type ||
+      result.draft.deadline.timeZone !== "Pacific/Auckland"
+    )
+      throw new Error("intent_mismatch");
+    console.log(
+      `PASS: ${example.text} → ${example.date} ${example.time || "end of day"} Pacific/Auckland.`,
+    );
+  }
 } catch (error) {
   console.error(
     "Gemini smoke check failed:",

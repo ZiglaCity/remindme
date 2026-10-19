@@ -6,7 +6,7 @@ config({
   quiet: true,
 });
 process.env.REMINDME_E2E_RUN_ID ??= randomUUID();
-const testEmails = ["a", "b", "c", "d"].map(
+const testEmails = ["a", "b", "c", "d", "e", "f"].map(
   (name) => `browser-${name}-${process.env.REMINDME_E2E_RUN_ID}@example.test`,
 );
 const baseURL = "http://127.0.0.1:3100";

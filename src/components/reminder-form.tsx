@@ -2,6 +2,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { ReminderDraft } from "@/lib/validation/ai";
+import { SessionRecovery } from "./session-recovery";
 const subscribe = () => () => {};
 const browserZone = () => {
   try {
@@ -56,16 +57,21 @@ export function ReminderForm({
   const [kind, setKind] = useState(values?.deadline.type ?? "date_time");
   const [revision, setRevision] = useState(initial?.revision);
   const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState(false);
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   const [conflict, setConflict] = useState(false);
   const field =
     "mt-2 block w-full rounded-lg border border-stone-300 bg-white px-3 py-3";
   return (
     <form
-      className="mt-8 space-y-5"
+      className="mt-8 space-y-5 reminder-form"
+      aria-busy={busy || created}
       onSubmit={async (event) => {
         event.preventDefault();
+        if (busy || created) return;
         setError("");
+        setExpired(false);
         setConflict(false);
         const form = new FormData(event.currentTarget);
         const deadline = {
@@ -94,6 +100,7 @@ export function ReminderForm({
           );
           const result = await response.json();
           if (!response.ok) {
+            setExpired(response.status === 401);
             setError(
               result.error?.message ??
                 "Couldn’t save this reminder. Please try again.",
@@ -103,7 +110,10 @@ export function ReminderForm({
             setRevision(result.reminder.revision);
             onSaved?.(result.reminder);
             if (initial) router.refresh();
-            else router.replace(`/app/reminders/${result.reminder.id}`);
+            else {
+              setCreated(true);
+              router.replace(`/app/reminders/${result.reminder.id}`);
+            }
           }
         } catch {
           setError(
@@ -114,7 +124,11 @@ export function ReminderForm({
         }
       }}
     >
-      <fieldset disabled={busy} className="space-y-5 disabled:opacity-60">
+      <fieldset
+        disabled={busy || created}
+        className="space-y-5 disabled:opacity-60"
+      >
+        <SessionRecovery visible={expired} />
         <label className="block">
           Title
           <input
@@ -213,7 +227,13 @@ export function ReminderForm({
           {error}
         </p>
         <button className="rounded-lg bg-emerald-900 px-5 py-3 font-medium text-white">
-          {busy ? "Saving…" : initial ? "Save changes" : "Save reminder"}
+          {busy
+            ? "Saving…"
+            : created
+              ? "Opening reminder…"
+              : initial
+                ? "Save changes"
+                : "Save reminder"}
         </button>
         {conflict && (
           <button

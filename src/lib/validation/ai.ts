@@ -33,6 +33,7 @@ export const modelOutput = z
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
       .nullable(),
     deadlineType: z.enum(["date_only", "date_time"]).nullable(),
+    deadlineRelation: z.enum(["on_or_by", "before_date"]).nullable(),
     timeZone: timeZoneSchema.nullable(),
     question: z.string().trim().min(1).max(400).nullable(),
   })
@@ -50,5 +51,5 @@ export type ReminderDraft = {
   };
 };
 export type ParseResult =
-  | { status: "ready"; draft: ReminderDraft }
+  | { status: "ready"; draft: ReminderDraft; interpretation?: string }
   | { status: "clarify"; question: string };

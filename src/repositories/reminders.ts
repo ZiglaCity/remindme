@@ -6,6 +6,10 @@ import {
   getTableColumns,
   inArray,
   isNull,
+  gte,
+  lt,
+  ilike,
+  or,
   sql,
 } from "drizzle-orm";
 import type { Database, Owner } from "./preferences";
@@ -55,6 +59,13 @@ export async function listReminders(
   status: "active" | "completed",
   page: number,
   pageSize: number,
+  filter?: {
+    view: "all" | "today" | "upcoming" | "overdue";
+    q: string;
+    now: Date;
+    todayStart: Date;
+    tomorrowStart: Date;
+  },
 ) {
   const rows = await db
     .select({
@@ -73,6 +84,30 @@ export async function listReminders(
         eq(reminders.userId, owner.userId),
         eq(reminders.status, status),
         isNull(reminders.deletedAt),
+        filter?.view === "overdue"
+          ? lt(reminders.dueAt, filter.now)
+          : undefined,
+        filter?.view === "today"
+          ? and(
+              gte(reminders.dueAt, filter.todayStart),
+              lt(reminders.dueAt, filter.tomorrowStart),
+            )
+          : undefined,
+        filter?.view === "upcoming"
+          ? gte(reminders.dueAt, filter.tomorrowStart)
+          : undefined,
+        filter?.q
+          ? or(
+              ilike(
+                reminders.title,
+                `%${filter.q.replace(/[\\%_]/g, "\\$&")}%`,
+              ),
+              ilike(
+                reminders.description,
+                `%${filter.q.replace(/[\\%_]/g, "\\$&")}%`,
+              ),
+            )
+          : undefined,
       ),
     )
     .orderBy(asc(reminders.dueAt), asc(reminders.createdAt), asc(reminders.id))
@@ -84,6 +119,38 @@ export async function listReminders(
     pageSize,
     hasMore: rows.length > pageSize,
   };
+}
+export async function reminderSummary(
+  db: Database,
+  owner: Owner,
+  now: Date,
+  todayStart: Date,
+  tomorrowStart: Date,
+) {
+  const [counts] = await db
+    .select({
+      active:
+        sql<number>`count(*) filter (where ${reminders.status} = 'active')`.mapWith(
+          Number,
+        ),
+      today:
+        sql<number>`count(*) filter (where ${reminders.status} = 'active' and ${reminders.dueAt} >= ${todayStart} and ${reminders.dueAt} < ${tomorrowStart})`.mapWith(
+          Number,
+        ),
+      overdue:
+        sql<number>`count(*) filter (where ${reminders.status} = 'active' and ${reminders.dueAt} < ${now})`.mapWith(
+          Number,
+        ),
+      completed:
+        sql<number>`count(*) filter (where ${reminders.status} = 'completed')`.mapWith(
+          Number,
+        ),
+    })
+    .from(reminders)
+    .where(
+      and(eq(reminders.userId, owner.userId), isNull(reminders.deletedAt)),
+    );
+  return counts;
 }
 export async function notificationHistory(
   db: Executor,

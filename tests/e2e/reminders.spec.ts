@@ -53,7 +53,7 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   await page.getByLabel("What do you need to remember?").fill(source);
   // Real protected endpoint, with no provider key in the isolated browser server.
   await page
-    .getByRole("button", { name: "Interpret reminder", exact: true })
+    .getByRole("button", { name: "Preview reminder", exact: true })
     .click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "unavailable",
@@ -96,7 +96,7 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
     }
   });
   await page
-    .getByRole("button", { name: "Interpret reminder", exact: true })
+    .getByRole("button", { name: "Preview reminder", exact: true })
     .click();
   await page.getByLabel("What exact time tomorrow morning?").fill("9 AM");
   await page

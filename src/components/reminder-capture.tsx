@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { ReminderForm } from "./reminder-form";
 import { useSpeechInput } from "./use-speech-input";
 import type { ParseResult, ReminderDraft } from "@/lib/validation/ai";
+import { Icon } from "./icon";
+import { SessionRecovery } from "./session-recovery";
 
 export function ReminderCapture({
   timeZone,
@@ -18,22 +20,33 @@ export function ReminderCapture({
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmation, setConfirmation] = useState<{
     draft: ReminderDraft;
     source: string;
     version: number;
+    interpretation?: string;
   } | null>(null);
   const [manual, setManual] = useState(false);
   const pending = useRef<AbortController | null>(null);
+  const review = useRef<HTMLElement | null>(null);
+  const clarificationInput = useRef<HTMLInputElement | null>(null);
   const speech = useSpeechInput(text, updateText);
   useEffect(() => () => pending.current?.abort(), []);
+  useEffect(() => {
+    if (confirmation) review.current?.focus();
+  }, [confirmation]);
+  useEffect(() => {
+    if (question) clarificationInput.current?.focus();
+  }, [question]);
 
   function updateText(value: string) {
     setText(value);
     setHistory([]);
     setQuestion("");
     setAnswer("");
+    setConfirmation(null);
   }
   async function interpret() {
     if (busy || speech.listening) return;
@@ -45,6 +58,7 @@ export function ReminderCapture({
     pending.current = controller;
     setBusy(true);
     setError("");
+    setExpired(false);
     try {
       const response = await fetch("/api/ai/parse", {
         method: "POST",
@@ -54,6 +68,7 @@ export function ReminderCapture({
       });
       const result = await response.json();
       if (!response.ok) {
+        setExpired(response.status === 401);
         setError(
           result.error?.message ??
             "Couldn’t interpret this. Try again or enter it manually.",
@@ -68,6 +83,7 @@ export function ReminderCapture({
       } else if (parsed.status === "ready" && parsed.draft) {
         setConfirmation((previous) => ({
           draft: parsed.draft,
+          interpretation: parsed.interpretation,
           source: text,
           version: (previous?.version ?? 0) + 1,
         }));
@@ -88,7 +104,20 @@ export function ReminderCapture({
   }
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="capture-workspace space-y-6">
+      <div className="step-strip" aria-label="Reminder creation steps">
+        <span className={confirmation || manual ? "" : "current"}>
+          <b>1</b>Capture a thought
+        </span>
+        <Icon name="arrow" size={15} />
+        <span className={confirmation || manual ? "current" : ""}>
+          <b>2</b>Make it yours
+        </span>
+        <Icon name="arrow" size={15} />
+        <span>
+          <b>3</b>Let it go
+        </span>
+      </div>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -110,18 +139,19 @@ export function ReminderCapture({
           placeholder="Submit the report tomorrow at 3 PM"
           className="block w-full rounded-lg border border-stone-300 bg-white p-3"
         />
-        <p className="text-sm text-stone-600">
-          Relative dates use your saved time zone: {timeZone}. Review every
-          detail before saving.
+        <p className="capture-help">
+          Dates use {timeZone.replaceAll("_", " ")}. You’ll review the details
+          before anything is saved.
         </p>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="speech-controls">
           <button
             type="button"
             disabled={!speech.supported || busy || speech.stopping}
             onClick={speech.listening ? speech.stop : speech.start}
             aria-pressed={speech.listening}
-            className="rounded-lg border border-stone-400 px-4 py-2 disabled:opacity-50"
+            className="speech-button"
           >
+            <Icon name="mic" size={16} />
             {speech.stopping
               ? "Finishing transcription…"
               : speech.listening
@@ -147,6 +177,7 @@ export function ReminderCapture({
               {question}
             </label>
             <input
+              ref={clarificationInput}
               id="clarification"
               value={answer}
               maxLength={1000}
@@ -168,7 +199,8 @@ export function ReminderCapture({
             enter it manually.
           </p>
         )}
-        <div className="flex flex-wrap gap-4">
+        <SessionRecovery visible={expired} />
+        <div className="capture-submit">
           <button
             disabled={
               busy ||
@@ -178,11 +210,12 @@ export function ReminderCapture({
             }
             className="rounded-lg bg-emerald-900 px-5 py-3 font-medium text-white disabled:opacity-50"
           >
+            <Icon name="sparkle" size={17} />
             {busy
-              ? "Interpreting…"
+              ? "Finding the details…"
               : question
                 ? "Use this answer"
-                : "Interpret reminder"}
+                : "Preview reminder"}
           </button>
           <button
             type="button"
@@ -195,7 +228,7 @@ export function ReminderCapture({
         </div>
       </form>
       {manual ? (
-        <section aria-label="Manual reminder">
+        <section aria-label="Manual reminder" className="confirmation-section">
           <h2 className="text-xl font-semibold">Enter the details</h2>
           <ReminderForm
             timeZone={timeZone}
@@ -207,7 +240,9 @@ export function ReminderCapture({
         confirmation && (
           <section
             aria-label="Confirm reminder"
-            className="border-t border-stone-200 pt-6"
+            className="confirmation-section"
+            ref={review}
+            tabIndex={-1}
           >
             <h2 className="text-xl font-semibold">Review and confirm</h2>
             <p className="mt-2 text-sm text-stone-600">
@@ -218,6 +253,11 @@ export function ReminderCapture({
               <summary className="cursor-pointer">Original input</summary>
               <p className="mt-2 whitespace-pre-wrap">{confirmation.source}</p>
             </details>
+            {confirmation.interpretation && (
+              <p className="mt-3 text-sm" role="status">
+                {confirmation.interpretation} You can change it below.
+              </p>
+            )}
             <ReminderForm
               key={confirmation.version}
               timeZone={timeZone}

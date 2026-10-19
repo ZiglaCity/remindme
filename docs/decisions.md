@@ -245,3 +245,9 @@ D9 access configuration additionally accepts TESTER_ACCESS_MODE=all to allow eve
 ## D3 implementation selection — October 18, 2026
 
 Use @js-temporal/polyfill 0.5.1 on the selected Node 22 runtime. Explicit IANA zone conversion uses reject disambiguation for DST gaps/overlaps, with integer UTC instants for schedule arithmetic. Unit tests cover those cases and host-zone independence. The PRD's 75% illustrative time was corrected to October 28 at 06:00 for a ten-day interval starting October 20 at 18:00; the confirmed formula itself is unchanged.
+
+## D3 owner amendment — October 19, 2026
+
+The owner requested contextual correction of transcription errors and clear interpretation of “before [date].” With no explicit clock time, interpret **before a date as 23:59 on the preceding local calendar day**, rather than that date's end. The model identifies the referenced date and relation; the server performs calendar subtraction and normal zone/DST validation. Show the interpretation on the editable confirmation screen. “By/on [date]” and ordinary date-only entry retain 23:59 on the named date. Explicit times remain explicit; midnight is the start of the named date. No notification threshold or creation-anchor policy changes.
+
+Repair clear speech mistakes from context; ask one focused question when names, dates, numbers or competing meanings are uncertain. Keep the original transcription, one structured provider call per interpretation, and mandatory explicit save. No additional autonomous actions or correction agent are introduced.

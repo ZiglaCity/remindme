@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f7f6f2" />
+    <title>You're offline — RemindMe</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f7f6f2;
+        color: #26313b;
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+      }
+      main {
+        max-width: 460px;
+        text-align: center;
+      }
+      .mark {
+        margin: auto auto 28px;
+        width: 64px;
+        height: 64px;
+        border-radius: 22px;
+        background: #f1d6cc;
+        display: grid;
+        place-items: center;
+        font-size: 30px;
+      }
+      h1 {
+        font:
+          44px/1.1 Georgia,
+          serif;
+        letter-spacing: -1.5px;
+        margin: 0 0 20px;
+      }
+      p {
+        color: #68717a;
+      }
+      a {
+        display: inline-block;
+        background: #28343c;
+        color: white;
+        padding: 13px 24px;
+        border-radius: 12px;
+        text-decoration: none;
+        margin-top: 12px;
+      }
+      small {
+        display: block;
+        margin-top: 36px;
+        color: #68717a;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">↗</div>
+      <h1>A little pause.</h1>
+      <p>
+        You’re offline. Reconnect to view and save your reminders. Your private
+        reminder data isn’t stored in the offline cache.
+      </p>
+      <a href="/app">Try again</a
+      ><small>remindme. &nbsp; Less remembering. More living.</small>
+    </main>
+  </body>
+</html>

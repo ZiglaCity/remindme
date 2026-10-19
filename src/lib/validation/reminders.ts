@@ -58,5 +58,11 @@ export const paginationInput = z
   })
   .strict();
 export type DeadlineInput = z.infer<typeof deadlineInput>;
+export const reminderViewInput = paginationInput
+  .extend({
+    view: z.enum(["all", "today", "upcoming", "overdue"]).default("all"),
+    q: z.string().trim().max(160).default(""),
+  })
+  .strict();
 export type CreateReminderInput = z.infer<typeof createReminderInput>;
 export type EditReminderInput = z.infer<typeof editReminderInput>;

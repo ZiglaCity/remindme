@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "./icon";
+import { SessionRecovery } from "./session-recovery";
 export function ReminderActions({
   id,
   revision,
@@ -21,6 +23,7 @@ export function ReminderActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [expired, setExpired] = useState(false);
   const [local, setLocal] = useState<{
     revision: number;
     status: typeof status;
@@ -30,6 +33,7 @@ export function ReminderActions({
   async function act(action: "complete" | "reopen" | "delete") {
     setBusy(true);
     setError("");
+    setExpired(false);
     try {
       const response = await fetch(
         `/api/reminders/${id}${action === "delete" ? "" : `/${action}`}`,
@@ -40,6 +44,7 @@ export function ReminderActions({
         },
       );
       if (!response.ok) {
+        setExpired(response.status === 401);
         const result = await response.json();
         setError(result.error?.message ?? "Couldn’t update this reminder.");
       } else {
@@ -57,28 +62,32 @@ export function ReminderActions({
     }
   }
   return (
-    <div className="mt-5 text-sm">
-      <div className="flex flex-wrap items-center gap-5">
+    <div className="reminder-actions">
+      <div className="action-controls">
         <button
           disabled={busy}
           onClick={() =>
             act(current.status === "completed" ? "reopen" : "complete")
           }
-          className="font-medium text-emerald-900 underline disabled:opacity-50"
+          className="complete-action disabled:opacity-50"
         >
+          <Icon
+            name={current.status === "completed" ? "back" : "check"}
+            size={14}
+          />
           {current.status === "completed" ? "Reopen" : "Mark complete"}
         </button>
         {!confirmDelete && (
           <button
             disabled={busy}
             onClick={() => setConfirmDelete(true)}
-            className="text-stone-600 underline"
+            className="delete-action"
           >
             Delete
           </button>
         )}
         {confirmDelete && (
-          <>
+          <div className="delete-confirmation">
             <span>Delete this reminder?</span>
             <button
               disabled={busy}
@@ -94,12 +103,15 @@ export function ReminderActions({
             >
               Cancel
             </button>
-          </>
+          </div>
         )}
       </div>
-      <p role="alert" className="mt-2 text-red-800">
-        {error}
-      </p>
+      {error && (
+        <p role="alert" className="action-error">
+          {error}
+        </p>
+      )}
+      <SessionRecovery visible={expired} />
     </div>
   );
 }

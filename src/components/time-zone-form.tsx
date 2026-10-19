@@ -26,7 +26,7 @@ export function TimeZoneForm({
   const [busy, setBusy] = useState(false);
   return (
     <form
-      className="mt-8 space-y-5"
+      className="mt-6 space-y-5 settings-form"
       onSubmit={async (event) => {
         event.preventDefault();
         setBusy(true);

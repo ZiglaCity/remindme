@@ -32,7 +32,7 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 | 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending    |
 | 5     | SMTP delivery, attempts, and retries            | Complete                                       |
 | 6     | Independently deployed Azure timer worker       | Implemented locally; Azure deployment deferred |
-| 7     | Complete mobile UI and installable PWA          | Not started                                    |
+| 7     | Complete mobile UI and installable PWA          | Implemented; physical device checks pending    |
 | 8     | Production deployment and operational hardening | Not started                                    |
 | 9     | Reproducible documentation and handoff          | Not started                                    |
 
@@ -42,7 +42,7 @@ The owner confirmed D1–D10 on October 18, 2026. The full policies and acceptan
 
 - D1: verify official compatibility; pin exact dependencies and one lockfile. See [compatibility evidence](./docs/compatibility.md).
 - D2: preserve original creation anchor on edits/reopening; omit thresholds at or before now.
-- D3: date-only means 23:59 local; ambiguous/nonexistent DST times require clarification.
+- D3: date-only means 23:59 local; the October 19 owner amendment interprets explicit “before [date]” without a clock time as the previous local day at 23:59. Ambiguous/nonexistent DST times require clarification.
 - D4: coalesce due thresholds to the most advanced; audit cancellation reasons. Cancel unsent threshold work after the deadline as `deadline_passed`.
 - D5: completion/deletion are idempotent; deletion is soft; reopening retains creation anchor; no archive UI in V1.
 - D6: title 160, description 2,000, source 4,000 characters; priority low/normal/high (normal default); pagination 20/max 100; AI 10/min/user; auth 10/15min/key; SMTP delays 1/5/15/60 minutes, five attempts; batch 25, concurrency 5, lease five minutes; validate configurable bounds.
@@ -245,23 +245,25 @@ Exit gate:
 
 Expected files: final app pages/components, responsive styles, manifest, icons, service worker, offline page, browser/E2E/accessibility checks.
 
-- [ ] Complete `/`, `/login`, `/register`, `/app`, `/app/new`, `/app/reminders/[id]`, `/app/completed`, and `/app/settings`.
-- [ ] Keep landing page minimal; prioritize capture, confirmation, deadline clarity, completion, and recovery from errors.
-- [ ] Show date-only deadlines as dates, explicit date/time deadlines with useful zone context, overdue state, and next notification where useful.
-- [ ] Complete loading, empty, saving, validation, provider-error, session-expired, offline, and retry states.
-- [ ] Ensure mutations refresh displayed state correctly and repeated clicks do not accidentally duplicate submissions.
-- [ ] Validate mobile layouts, touch controls, focus handling, labels, keyboard navigation, screen-reader announcements, and color contrast.
-- [ ] Add a manifest with name/short name, colors, standalone display, required icons, and `start_url: /app`.
-- [ ] Add a service worker that caches only explicitly allowed public/static assets and a generic offline fallback.
-- [ ] Exclude private pages, auth/API responses, reminder data, and sensitive navigation responses from service-worker/CDN caching; review actual response headers.
-- [ ] Version caches and remove obsolete caches safely; verify service-worker upgrades and logout/account-switch behavior on shared devices.
-- [ ] Display a useful offline state without claiming offline edits are saved; recover when connectivity returns.
-- [ ] Validate HTTPS installability and installed launch routing; test signed-out launch returns to authentication safely.
-- [ ] Run complete user journeys on desktop/mobile browser configurations and manually verify installation on supported devices.
+- [x] Complete `/`, `/login`, `/register`, `/app`, `/app/new`, `/app/reminders/[id]`, `/app/completed`, and `/app/settings`.
+- [x] Keep landing page minimal; prioritize capture, confirmation, deadline clarity, completion, and recovery from errors.
+- [x] Show date-only deadlines as dates, explicit date/time deadlines with useful zone context, overdue state, and schedule history with delivery context.
+- [x] Complete loading, empty, saving, validation, provider-error, session-expired, offline, and retry states. Expired-session recovery opens sign-in in another tab to preserve unsaved input.
+- [x] Ensure mutations refresh displayed state correctly and repeated clicks do not accidentally duplicate submissions.
+- [x] Implement mobile layouts, touch controls, focus handling, labels, keyboard focus outlines, status announcements, and readable contrast; inspect desktop/mobile screenshots and check horizontal overflow.
+- [ ] Complete a hands-on keyboard/screen-reader audit on supported devices.
+- [x] Add a manifest with name/short name, colors, standalone display, required icons, and `start_url: /app`.
+- [x] Add a service worker that caches only explicitly allowed public/static assets and a generic offline fallback.
+- [x] Exclude private pages, auth/API responses, reminder data, and sensitive navigation responses from service-worker/CDN caching; review actual response headers.
+- [x] Version caches, remove obsolete caches safely, and verify explicit update activation; verify logout/account-switch behavior in the same browser context.
+- [x] Display a useful offline state without claiming offline edits are saved; recover when connectivity returns.
+- [x] Verify Chromium installability on trusted localhost, `/app` start URL, and signed-out authentication routing.
+- [x] Run desktop workflow journeys and a mobile dashboard/capture/detail/offline/installability browser journey.
+- [ ] Manually install/launch/upgrade on physical iOS/Android devices and verify production HTTPS installability after Phase 8 hosting.
 
 Exit gate:
 
-- [ ] Full workflow is usable on mobile and desktop, PWA launches `/app`, and no private reminder data is exposed through caching across accounts.
+- [ ] Close the physical-device installation/accessibility checks above. Local browser workflow, `/app` routing, offline privacy and cross-account cache isolation are verified; native installed launch remains pending.
 
 ## Phase 8 — Deployment and hardening
 
@@ -424,3 +426,13 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Live development queue inspection was read-only: no due, processing, stale or failed work at that checkpoint. No real SMTP send was executed in this phase. Root tool advisories remain unchanged; the minimal artifact SDK installation reports zero findings.
 - Added `docs/worker.md` with local/Core Tools setup, budget/lease semantics, package/publish steps, subscription/region/runtime/cost preflight and recovery limitations. The Azure CLI/Core Tools and Azurite are not installed here. Actual host timing, Neon cold-wake behavior from Azure, cloud SMTP connectivity, subscription costs and deployed receipt/history/recovery verification remain pending, explicitly separate from local fixtures.
 - Next checkpoint: provision/sign into Azure when the owner is ready, verify region/runtime/costs, deploy the prepared artifact and close the external Phase 6 gate. Local implementation is ready for review; no active hosted scheduler is claimed.
+
+### October 19, 2026 — Phase 7 UI/PWA implemented; device gates open
+
+- Rebuilt landing, authentication and the protected application with an ivory/ink/coral design, self-hosted DM Sans, editorial headings, local SVG illustrations, desktop sidebar and mobile bottom navigation. Dashboard cards show real owner-scoped totals; search and date filters run before pagination with saved-zone/DST-aware day boundaries. Capture, editable confirmation, manual entry, details/schedule history, completed reminders, settings, loading, empty, error, not-found and access-denied screens share the design.
+- Added focus movement for clarification/review, visible keyboard focus, mobile form sizes/touch targets, explicit duplicate-submit prevention during create navigation, session recovery in another tab and stale-confirmation clearing when source text changes. Server revisions, owner guards and explicit-save behavior remain enforced.
+- Added standalone `/app` manifest, local PNG/maskable/Apple icons, settings installation controls, offline/update notices and an exact public-only service-worker cache. Navigations remain network-only with a generic offline fallback; no private HTML, API/RSC response, reminder data or mutation enters Cache Storage. Reviewed private response headers and made updates require an explicit click.
+- Verification: 42 unit checks, lint, TypeScript, formatting and a production build pass. Browser checks cover registration/settings, full manual/AI-confirmation CRUD, server filtering/search, desktop/mobile overflow and screenshots, real Chromium installability (no reported errors), manifest/icons, cache allowlist, offline private navigation, logout/relaunch and account switching. After the final capture refinements, both the full reminder journey and PWA journey passed again (two tests, 4.4 minutes). An earlier isolated signup request returned 500; it did not recur in those following journeys, and no auth behavior change was made. Temporary diagnostics were removed. These are local browser checks, not physical-device installation or a full assistive-technology audit.
+- Added `docs/ui-pwa.md`; native iOS/Android installation/upgrade, hands-on accessibility and deployed HTTPS installability remain open. Azure deployment remains deferred, so hosted scheduled delivery is still inactive. No site was published and no test email was sent.
+- Owner-requested AI amendment: correct clear transcription mistakes from context; ask one focused question for uncertainty. “Before [date]” with no explicit clock becomes 23:59 on the previous local calendar day using server-side Temporal arithmetic; “by/on” retains that date's end, and midnight is the start of the named date. Review explains the adjustment and stays editable. One structured provider request per interpretation; no extra AI agent/action chain or notification-policy change. The default model uses its supported low thinking setting for extraction; custom model overrides retain provider defaults.
+- Expanded `ai:check` with before/by/year-boundary, speech-error and midnight examples. Live verification remains pending: generation timed out and ultimately returned HTTP 504 through the session proxy, while a read-only models request succeeded. Local strict-output and year/leap-day boundary checks pass. No database writes or emails were produced by the live AI diagnostic.

@@ -13,10 +13,48 @@ const output = {
   date: "2026-10-20",
   time: "15:00",
   deadlineType: "date_time",
+  deadlineRelation: "on_or_by",
   timeZone: null,
   question: null,
 };
 describe("AI drafts", () => {
+  it("calculates before-date boundaries locally across year and leap-day boundaries", () => {
+    for (const [date, previous] of [
+      ["2027-01-01", "2026-12-31"],
+      ["2028-03-01", "2028-02-29"],
+    ]) {
+      const raw = {
+        ...output,
+        date,
+        time: null,
+        deadlineType: "date_only",
+        deadlineRelation: "before_date",
+      };
+      expect(
+        validateModelOutput(JSON.stringify(raw), "Pacific/Auckland"),
+      ).toMatchObject({
+        status: "ready",
+        interpretation: expect.stringContaining(previous),
+        draft: {
+          deadline: {
+            type: "date_time",
+            date: previous,
+            time: "23:59",
+            timeZone: "Pacific/Auckland",
+          },
+        },
+      });
+      expect(
+        validateModelOutput(
+          JSON.stringify({ ...raw, deadlineRelation: "on_or_by" }),
+          "Pacific/Auckland",
+        ),
+      ).toMatchObject({
+        status: "ready",
+        draft: { deadline: { type: "date_only", date, time: "" } },
+      });
+    }
+  });
   it("uses a fixed local clock context and validates an editable draft", () => {
     const context = JSON.parse(
       parsingContext(

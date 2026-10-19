@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
+import { Icon } from "./icon";
 export function SignOut() {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -10,7 +11,9 @@ export function SignOut() {
     <div>
       <button
         disabled={busy}
-        className="text-sm underline disabled:opacity-50"
+        className="sign-out-button disabled:opacity-50"
+        aria-label={busy ? "Signing out…" : "Sign out"}
+        title="Sign out"
         onClick={async () => {
           setBusy(true);
           setError("");
@@ -28,11 +31,13 @@ export function SignOut() {
           }
         }}
       >
-        {busy ? "Signing out…" : "Sign out"}
+        <Icon name="logout" size={18} />
       </button>
-      <p role="alert" className="text-sm text-red-800">
-        {error}
-      </p>
+      {error && (
+        <p role="alert" className="text-sm text-red-800">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
