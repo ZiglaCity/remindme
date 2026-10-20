@@ -29,6 +29,20 @@
       "when": 1792370338048,
       "tag": "0003_young_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792406707873,
+      "tag": "0004_talented_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792406769264,
+      "tag": "0005_tiresome_mulholland_black",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { timeZoneSchema } from "../auth/policy";
+import { recurrenceInput } from "./recurrence";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date.");
 const time = z
@@ -32,6 +33,7 @@ export const createReminderInput = z
     sourceText: z.string().max(4000).nullable().optional(),
     priority: z.enum(["low", "normal", "high"]).default("normal"),
     deadline: deadlineInput,
+    recurrence: recurrenceInput.nullable().optional(),
   })
   .strict();
 export const editReminderInput = z
@@ -41,6 +43,7 @@ export const editReminderInput = z
     description: z.string().max(2000).nullable().optional(),
     priority: z.enum(["low", "normal", "high"]).optional(),
     deadline: deadlineInput.optional(),
+    recurrence: recurrenceInput.nullable().optional(),
   })
   .strict()
   .refine(

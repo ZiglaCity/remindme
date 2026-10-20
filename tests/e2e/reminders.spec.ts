@@ -49,7 +49,9 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   expect(signedUp.status()).toBe(200);
   await page.goto("/app");
   await page.getByRole("link", { name: "New reminder", exact: true }).click();
-  const source = "Submit the report tomorrow morning";
+  const source =
+    "Join the research meeting every Sunday morning and bring progress notes";
+  const sunday = (7 - new Date().getUTCDay()) % 7 || 7;
   await page.getByLabel("What do you need to remember?").fill(source);
   // Real protected endpoint, with no provider key in the isolated browser server.
   await page
@@ -70,23 +72,31 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
       await route.fulfill({
         json: {
           status: "clarify",
-          question: "What exact time tomorrow morning?",
+          question: "What exact time on Sunday morning?",
         },
       });
     else {
       expect(input.clarification).toEqual([
-        { question: "What exact time tomorrow morning?", answer: "9 AM" },
+        { question: "What exact time on Sunday morning?", answer: "9 AM" },
       ]);
       await route.fulfill({
         json: {
           status: "ready",
           draft: {
             title: "AI report",
-            description: null,
+            description:
+              "Join the weekly research meeting and bring your progress notes.",
             priority: "normal",
+            recurrence: {
+              frequency: "weekly",
+              interval: 1,
+              weekdays: [7],
+              monthDay: null,
+              endsOn: null,
+            },
             deadline: {
               type: "date_time",
-              date: date(1),
+              date: date(sunday),
               time: "09:00",
               timeZone: "UTC",
             },
@@ -98,7 +108,7 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   await page
     .getByRole("button", { name: "Preview reminder", exact: true })
     .click();
-  await page.getByLabel("What exact time tomorrow morning?").fill("9 AM");
+  await page.getByLabel("What exact time on Sunday morning?").fill("9 AM");
   await page
     .getByRole("button", { name: "Use this answer", exact: true })
     .click();
@@ -109,7 +119,16 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
     (await (await page.request.get("/api/reminders")).json()).items,
   ).toHaveLength(0);
   await page.getByLabel("Title", { exact: true }).fill("Corrected AI report");
-  await page.getByLabel("Date", { exact: true }).fill(date(2));
+  await expect(page.getByLabel("Repeats", { exact: true })).toHaveValue(
+    "weekly",
+  );
+  await expect(
+    page.getByRole("checkbox", { name: "Sunday", exact: true }),
+  ).toBeChecked();
+  await expect(page.getByLabel("Description", { exact: false })).toHaveValue(
+    "Join the weekly research meeting and bring your progress notes.",
+  );
+  await page.getByLabel("Date", { exact: true }).fill(date(sunday + 7));
   await page
     .getByRole("button", { name: "Save reminder", exact: true })
     .click();
@@ -119,7 +138,12 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
     await (await page.request.get(`/api/reminders/${parsedId}`)).json()
   ).reminder;
   expect(parsed.title).toBe("Corrected AI report");
-  expect(parsed.dueDate).toBe(date(2));
+  expect(parsed.dueDate).toBe(date(sunday + 7));
+  expect(parsed.recurrence.weekdays).toEqual([7]);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Edit reminder", exact: true }),
+  ).toBeVisible();
   expect(parsed.sourceText).toBe(source);
   expect(
     (
@@ -174,6 +198,9 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
         ),
     );
   await page
+    .getByRole("button", { name: "Edit reminder", exact: true })
+    .click();
+  await page
     .getByLabel("Title", { exact: true })
     .fill("Renamed browser reminder");
   let saved = page.waitForResponse(
@@ -194,6 +221,10 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   expect(
     detail.notifications.map((item: { id: string }) => item.id).sort(),
   ).toEqual(originalIds);
+  await expect(page.getByLabel("Title", { exact: true })).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Edit reminder", exact: true })
+    .click();
   const external = await page.request.patch(`/api/reminders/${id}`, {
     headers: { origin: baseURL! },
     data: {
@@ -217,6 +248,9 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
     page.getByText("This reminder changed.", { exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Reload saved version" }).click();
+  await page
+    .getByRole("button", { name: "Edit reminder", exact: true })
+    .click();
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue(
     "Renamed browser reminder",
   );

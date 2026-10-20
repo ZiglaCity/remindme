@@ -25,7 +25,10 @@ export function createGeminiParser(apiKey: string | undefined, model: string) {
       apiKey,
       httpOptions: { timeout: 25_000, retryOptions: { attempts: 1 } },
     });
-    const deadline = AbortSignal.timeout(25_000);
+    const controller = new AbortController();
+    const deadline = controller.signal;
+    // Keep standalone diagnostics alive until the same bounded timeout settles.
+    const timeout = setTimeout(() => controller.abort(), 25_000);
     try {
       const result = await client.models.generateContent({
         model,
@@ -37,7 +40,7 @@ export function createGeminiParser(apiKey: string | undefined, model: string) {
           maxOutputTokens: 2048,
           // Extraction needs a short answer, not extended agent reasoning.
           // Keep custom models on their own supported defaults.
-          ...(model === "gemini-3.8-flash"
+          ...(model === "gemini-3.8-flash" || model === "gemini-3.5-flash-lite"
             ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
             : {}),
           abortSignal: signal ? AbortSignal.any([signal, deadline]) : deadline,
@@ -56,17 +59,19 @@ export function createGeminiParser(apiKey: string | undefined, model: string) {
           "ai_capacity",
           "Text interpretation is busy. Wait a minute or enter your reminder manually.",
         );
-      if (deadline.aborted)
+      if (deadline.aborted || status === 408 || status === 504)
         throw new AppError(
           504,
           "ai_timeout",
-          "Text interpretation took too long. Try again or enter your reminder manually.",
+          "The AI service didn’t respond in time. Your text is kept; try again or enter your reminder manually.",
         );
       throw new AppError(
         503,
         "ai_unavailable",
         "Text interpretation is unavailable right now. Your input is still here; try again or enter it manually.",
       );
+    } finally {
+      clearTimeout(timeout);
     }
   };
 }

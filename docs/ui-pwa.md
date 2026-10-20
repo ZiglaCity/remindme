@@ -8,6 +8,8 @@ Natural-language entry retains the original text and explicit review/save step. 
 
 Expired-session responses offer sign-in in a separate tab, preserving the current draft in memory while the user authenticates again. Editing the source text discards the previous AI confirmation so stale extracted details cannot be saved against a changed transcription. Before-date interpretation is explained on the review screen; see [AI interpretation rules](./ai.md).
 
+The recurrence amendment retains this design and adds repeat controls/labels only. Saved details now open read-only; Edit reminder explicitly opens the editor and successful saving closes it. See [repeat scheduling and completion behavior](./recurrence.md).
+
 ## Installation
 
 The App Router manifest is `/manifest.webmanifest`: name/short name, `start_url: /app`, standalone display, scope `/`, matching theme/background colors, and PNG 192/512 icons plus a full-bleed 512 maskable icon. Apple touch metadata and a 180-pixel icon are included. The brand's SVG is the source for the raster assets.

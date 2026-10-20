@@ -16,8 +16,9 @@ import {
   type Database,
   type Owner,
 } from "../../repositories/preferences";
-import { resolveDeadline } from "../scheduling/deadline";
-import { calculateSchedule, type Clock } from "../scheduling/schedule";
+import { resolveDeadline, deadlineFields } from "../scheduling/deadline";
+import { reminderSchedule, type Clock } from "../scheduling/schedule";
+import { prepareRecurrence, nextOccurrence } from "../scheduling/recurrence";
 import type { z } from "zod";
 
 function validated<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -47,8 +48,15 @@ export function createReminderService(
       const input = validated(createReminderInput, raw);
       const preferences = await readPreferences(db, owner);
       const deadline = resolveDeadline(input.deadline, preferences.timeZone);
+      const recurrence = prepareRecurrence(input.recurrence, input.deadline);
       return db.transaction(async (tx) => {
         const now = clock();
+        if (recurrence && deadline.dueAt <= now)
+          throw new AppError(
+            400,
+            "invalid_recurrence",
+            "Choose a future first occurrence for this repeating reminder.",
+          );
         const [row] = await tx
           .insert(reminders)
           .values({
@@ -57,12 +65,14 @@ export function createReminderService(
             description: input.description ?? null,
             sourceText: input.sourceText ?? null,
             priority: input.priority,
+            recurrence,
+            occurrenceAnchorAt: recurrence ? now : null,
             ...deadline,
             createdAt: now,
             updatedAt: now,
           })
           .returning();
-        const schedule = calculateSchedule(row.createdAt, row.dueAt, now);
+        const schedule = reminderSchedule(row, now);
         if (schedule.length)
           await tx.insert(scheduledNotifications).values(
             schedule.map((item) => ({
@@ -86,15 +96,59 @@ export function createReminderService(
         const deadline = input.deadline
           ? resolveDeadline(input.deadline, row.timeZone)
           : null;
-        const changed =
+        const deadlineChanged = Boolean(
           deadline &&
           (deadline.dueAt.getTime() !== row.dueAt.getTime() ||
             deadline.dueDate !== row.dueDate ||
             deadline.deadlineType !== row.deadlineType ||
-            deadline.timeZone !== row.timeZone);
+            deadline.timeZone !== row.timeZone),
+        );
+        let recurrence =
+          input.recurrence !== undefined || deadlineChanged
+            ? prepareRecurrence(
+                input.recurrence === undefined
+                  ? row.recurrence
+                  : input.recurrence,
+                input.deadline ?? deadlineFields(row),
+              )
+            : row.recurrence;
+        const samePattern =
+          recurrence &&
+          row.recurrence &&
+          recurrence.frequency === row.recurrence.frequency &&
+          recurrence.interval === row.recurrence.interval &&
+          recurrence.monthDay === row.recurrence.monthDay &&
+          JSON.stringify(recurrence.weekdays) ===
+            JSON.stringify(row.recurrence.weekdays);
+        if (recurrence && row.recurrence && samePattern && !deadlineChanged)
+          recurrence = {
+            ...recurrence,
+            anchorDate: row.recurrence.anchorDate,
+            localTime: row.recurrence.localTime,
+          };
+        const recurrenceChanged =
+          JSON.stringify(recurrence) !== JSON.stringify(row.recurrence);
+        const changed = deadlineChanged || recurrenceChanged;
+        if (
+          changed &&
+          row.status === "active" &&
+          recurrence &&
+          (deadline?.dueAt ?? row.dueAt) <= now
+        )
+          throw new AppError(
+            400,
+            "invalid_recurrence",
+            "Choose a future first occurrence when changing this repeating schedule.",
+          );
         const version = row.scheduleVersion + (changed ? 1 : 0);
         if (changed)
-          await cancelOutstanding(tx, owner, id, "deadline_changed", now);
+          await cancelOutstanding(
+            tx,
+            owner,
+            id,
+            deadlineChanged ? "deadline_changed" : "recurrence_changed",
+            now,
+          );
         const [updated] = await tx
           .update(reminders)
           .set({
@@ -106,6 +160,12 @@ export function createReminderService(
               ? { priority: input.priority }
               : {}),
             ...(deadline ?? {}),
+            recurrence,
+            occurrenceAnchorAt: recurrence
+              ? changed && (!samePattern || deadlineChanged)
+                ? now
+                : (row.occurrenceAnchorAt ?? row.createdAt)
+              : null,
             scheduleVersion: version,
             revision: row.revision + 1,
             updatedAt: now,
@@ -113,7 +173,7 @@ export function createReminderService(
           .where(ownedReminder(owner, id))
           .returning();
         if (changed && row.status === "active") {
-          const schedule = calculateSchedule(row.createdAt, updated.dueAt, now);
+          const schedule = reminderSchedule(updated, now);
           if (schedule.length)
             await tx.insert(scheduledNotifications).values(
               schedule.map((item) => ({
@@ -163,6 +223,16 @@ export function createReminderService(
               : "reopened",
           now,
         );
+        const next =
+          action === "reopen" && row.recurrence && row.dueAt <= now
+            ? nextOccurrence(row.recurrence, row.timeZone, now)
+            : null;
+        if (action === "reopen" && row.recurrence && row.dueAt <= now && !next)
+          throw new AppError(
+            400,
+            "recurrence_ended",
+            "This repeating schedule has ended. Edit its end date before reopening.",
+          );
         const changes =
           action === "delete"
             ? { deletedAt: now }
@@ -172,6 +242,13 @@ export function createReminderService(
                   status: "active" as const,
                   completedAt: null,
                   scheduleVersion: row.scheduleVersion + 1,
+                  ...(next
+                    ? {
+                        dueAt: next.dueAt,
+                        dueDate: next.dueDate,
+                        occurrenceAnchorAt: next.previousAt ?? now,
+                      }
+                    : {}),
                 };
         const [updated] = await tx
           .update(reminders)
@@ -179,7 +256,7 @@ export function createReminderService(
           .where(ownedReminder(owner, id))
           .returning();
         if (action === "reopen") {
-          const schedule = calculateSchedule(row.createdAt, row.dueAt, now);
+          const schedule = reminderSchedule(updated, now);
           if (schedule.length)
             await tx.insert(scheduledNotifications).values(
               schedule.map((item) => ({

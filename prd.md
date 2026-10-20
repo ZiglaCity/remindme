@@ -1,6 +1,6 @@
 # RemindMe — Product Requirements & Technical Specification
 
-**Document version:** 1.0  
+**Document version:** 1.1 (October 19 owner recurrence amendment)\
 **Status:** Ready for implementation  
 **Product type:** Personal reminder and external-memory web application  
 **Initial audience:** Owner and a small group of invited testers  
@@ -44,7 +44,6 @@ The following are explicitly outside the initial release:
 - Team workspaces and shared reminders.
 - Calendar synchronization.
 - SMS, WhatsApp, push notifications or mobile-native applications.
-- Recurring reminders.
 - AI agents that independently change or complete tasks.
 - Complex analytics or productivity dashboards.
 - Email verification and password-reset workflows.
@@ -1175,8 +1174,18 @@ The following decisions are locked for V1:
 - Explicit date-only and date-time deadline semantics.
 - Persisted notification schedules with retries and recovery.
 - PWA launch directly into `/app`.
-- No recurring reminders in V1.
+- Recurring reminders follow the October 19 owner amendment below.
 - No separate Express API server.
 - No unnecessary paid services or always-running infrastructure.
 
 **Product principle:** RemindMe must remain a trustworthy reminder system even when the AI provider, database connection, hosting platform or SMTP server temporarily fails. Existing reminders and their schedules must remain durable, recoverable and isolated by user.
+
+# 18. Owner scope amendment — October 19, 2026
+
+Recurring reminders are now included in V1, superseding the original recurrence exclusion. Support daily, weekly (including selected weekdays), monthly, configurable calendar intervals and an optional inclusive end date. Natural-language and voice transcripts can specify repeats, such as “every Sunday at 2 PM,” and the editable confirmation includes the repeat rule. Improve descriptions from supplied event context without inventing facts.
+
+The owner confirmed that repeats retain **50% / 75% / 90% advance notifications** for every occurrence. The initial occurrence uses its creation anchor; each later occurrence uses the preceding scheduled occurrence as its interval anchor. **Mark complete stops the entire repeating reminder** and cancels future work. Deleted/completed series never restart automatically. Reopen is explicit. Original one-off reminder policies remain unchanged.
+
+Use stored local calendar intent and IANA time zones, preserve month-day intent across shorter months, and define future DST handling. The worker advances occurrences and inserts schedules atomically under row locks, retains history, bounds catch-up after downtime, and avoids duplicate advancement across overlapping invocations. A recurring reminder whose previous notifications are already terminal must still advance at its deadline. Saved details are read-only until the user explicitly chooses Edit reminder; successful edits return to that view.
+
+The full calendar, scheduling, outage and lifecycle policies are in [docs/recurrence.md](./docs/recurrence.md). This amendment authorizes the corresponding schema, worker, API, AI and form changes without a redesign of the application's visual style.

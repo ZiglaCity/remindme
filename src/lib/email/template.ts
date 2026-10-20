@@ -1,4 +1,6 @@
 import { formatDeadline } from "../reminders/display";
+import { formatRecurrence } from "../reminders/recurrence-display";
+import type { Recurrence } from "../validation/recurrence";
 
 export type ReminderEmail = {
   id: string;
@@ -9,6 +11,7 @@ export type ReminderEmail = {
   deadlineType: "date_only" | "date_time";
   timeZone: string;
   thresholdPercent: number;
+  recurrence?: Recurrence | null;
 };
 const escapeHtml = (value: string) =>
   value.replace(
@@ -31,7 +34,9 @@ export function reminderEmail(reminder: ReminderEmail, appUrl: string) {
     base,
   ).href;
   const deadline = formatDeadline(reminder);
-  const context = `${reminder.thresholdPercent}% of the time between creation and the deadline has elapsed.`;
+  const context = reminder.recurrence
+    ? `${reminder.thresholdPercent}% of the current occurrence's interval has elapsed. ${formatRecurrence(reminder.recurrence)}. Mark complete in the app to stop all future repeats.`
+    : `${reminder.thresholdPercent}% of the time between creation and the deadline has elapsed.`;
   const dateOnly =
     reminder.deadlineType === "date_only"
       ? "Date-only deadline; ends at 11:59 PM in the displayed time zone."

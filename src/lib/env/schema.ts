@@ -29,7 +29,7 @@ export const webEnvSchema = databaseEnvSchema.extend({
   GEMINI_MODEL: z
     .string()
     .regex(/^gemini-[a-z0-9.-]+$/)
-    .default("gemini-3.8-flash"),
+    .default("gemini-3.5-flash-lite"),
   TESTER_ACCESS_MODE: z
     .enum(["allowlist", "public", "all"])
     .default("allowlist"),

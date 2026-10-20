@@ -43,7 +43,7 @@ export default async function ReminderPage({
         </span>
       </div>
       <div className="detail-grid">
-        <section aria-label="Edit reminder">
+        <section aria-label="Reminder details">
           <ReminderEditor
             key={id}
             initial={{
@@ -53,6 +53,7 @@ export default async function ReminderPage({
               priority: reminder.priority,
               revision: reminder.revision,
               status: reminder.status,
+              recurrence: reminder.recurrence,
               deadline: deadlineFields(reminder),
             }}
           />
@@ -83,7 +84,13 @@ export default async function ReminderPage({
                   · {notification.status}
                 </span>
                 {notification.scheduleVersion !== reminder.scheduleVersion && (
-                  <span className="text-stone-500"> · Previous deadline</span>
+                  <span className="text-stone-500">
+                    {" "}
+                    ·{" "}
+                    {reminder.recurrence
+                      ? "Previous occurrence or schedule"
+                      : "Previous deadline"}
+                  </span>
                 )}
               </li>
             ))}

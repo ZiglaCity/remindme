@@ -9,11 +9,13 @@ export function ReminderActions({
   status,
   afterDelete = "/app",
   onChanged,
+  recurring = false,
 }: {
   id: string;
   revision: number;
   status: "active" | "completed" | "archived";
   afterDelete?: string;
+  recurring?: boolean;
   onChanged?: (saved: {
     revision: number;
     status: "active" | "completed" | "archived";
@@ -70,6 +72,11 @@ export function ReminderActions({
             act(current.status === "completed" ? "reopen" : "complete")
           }
           className="complete-action disabled:opacity-50"
+          title={
+            recurring && current.status !== "completed"
+              ? "Complete this reminder and stop all future repeats"
+              : undefined
+          }
         >
           <Icon
             name={current.status === "completed" ? "back" : "check"}

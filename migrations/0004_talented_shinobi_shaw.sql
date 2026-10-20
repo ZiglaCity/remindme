@@ -1,0 +1,3 @@
+ALTER TABLE "reminders" ADD COLUMN "recurrence" jsonb;--> statement-breakpoint
+ALTER TABLE "reminders" ADD COLUMN "occurrence_anchor_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "reminders" ADD CONSTRAINT "reminder_recurrence_valid" CHECK ("reminders"."recurrence" is null or (jsonb_typeof("reminders"."recurrence") = 'object' and "reminders"."recurrence"->>'frequency' in ('daily','weekly','monthly') and ("reminders"."recurrence"->>'interval')::integer between 1 and 365 and "reminders"."recurrence"->>'anchorDate' is not null and "reminders"."recurrence"->>'localTime' is not null));

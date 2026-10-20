@@ -8,6 +8,7 @@ import { formatDeadline } from "@/lib/reminders/display";
 import { ReminderActions } from "./reminder-actions";
 import { readPreferences } from "@/repositories/preferences";
 import { Icon } from "./icon";
+import { formatRecurrence } from "@/lib/reminders/recurrence-display";
 
 export async function ReminderList({
   completed = false,
@@ -288,11 +289,17 @@ export async function ReminderList({
                         )}
                       </div>
                       <ReminderActions
+                        recurring={Boolean(reminder.recurrence)}
                         id={reminder.id}
                         revision={reminder.revision}
                         status={reminder.status}
                         afterDelete={base}
                       />
+                      {reminder.recurrence && (
+                        <p className="reminder-description mt-2">
+                          {formatRecurrence(reminder.recurrence)}
+                        </p>
+                      )}
                     </div>
                     <Link
                       href={`/app/reminders/${reminder.id}`}

@@ -1,6 +1,6 @@
 # RemindMe implementation plan
 
-Source of truth: [prd.md](./prd.md), version 1.0. Plan created October 18, 2026.
+Source of truth: [prd.md](./prd.md), version 1.1 including the October 19 recurrence amendment. Plan created October 18, 2026.
 
 ## Starting point and scope
 
@@ -8,7 +8,7 @@ Repository inspection found `prd.md`, a minimal `README.md`, and `LICENSE`. Ther
 
 Build V1 in the PRD's order: correctness, user isolation, scheduling, delivery, usability, then polish. Keep Next.js App Router, TypeScript, Zod, Better Auth, Drizzle, Neon PostgreSQL, Gemini, browser speech recognition, Nodemailer/SMTP, Azure Functions, and Vercel as the agreed stack.
 
-Exclude billing, shared workspaces, calendar integration, SMS/push, recurring reminders, native apps, autonomous AI actions, email verification, password reset, full offline synchronization, and a separate Express server.
+Exclude billing, shared workspaces, calendar integration, SMS/push, native apps, autonomous AI actions, email verification, password reset, full offline synchronization, and a separate Express server. Recurring reminders are included by the October 19 owner scope amendment.
 
 ## How we will work through this plan
 
@@ -24,17 +24,18 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, recurring re
 
 ## Progress tracker
 
-| Phase | Outcome                                         | Status                                         |
-| ----- | ----------------------------------------------- | ---------------------------------------------- |
-| 1     | Repository, runtime, database foundation        | Complete                                       |
-| 2     | Authentication and ownership boundaries         | Implemented; live Google OAuth pending         |
-| 3     | Manual reminder CRUD and durable schedules      | Complete                                       |
-| 4     | Confirmed AI parsing and optional voice capture | Implemented; live microphone checks pending    |
-| 5     | SMTP delivery, attempts, and retries            | Complete                                       |
-| 6     | Independently deployed Azure timer worker       | Implemented locally; Azure deployment deferred |
-| 7     | Complete mobile UI and installable PWA          | Implemented; physical device checks pending    |
-| 8     | Production deployment and operational hardening | Not started                                    |
-| 9     | Reproducible documentation and handoff          | Not started                                    |
+| Phase | Outcome                                              | Status                                         |
+| ----- | ---------------------------------------------------- | ---------------------------------------------- |
+| 1     | Repository, runtime, database foundation             | Complete                                       |
+| 2     | Authentication and ownership boundaries              | Implemented; live Google OAuth pending         |
+| 3     | Manual reminder CRUD and durable schedules           | Complete                                       |
+| 4     | Confirmed AI parsing and optional voice capture      | Implemented; live microphone checks pending    |
+| 5     | SMTP delivery, attempts, and retries                 | Complete                                       |
+| 6     | Independently deployed Azure timer worker            | Implemented locally; Azure deployment deferred |
+| 7     | Complete mobile UI and installable PWA               | Implemented; physical device checks pending    |
+| 7a    | Repeats, grounded descriptions and saved detail view | Verified locally; Azure delivery deferred      |
+| 8     | Production deployment and operational hardening      | Not started                                    |
+| 9     | Reproducible documentation and handoff               | Not started                                    |
 
 ## Confirmed implementation decisions
 
@@ -265,6 +266,23 @@ Exit gate:
 
 - [ ] Close the physical-device installation/accessibility checks above. Local browser workflow, `/app` routing, offline privacy and cross-account cache isolation are verified; native installed launch remains pending.
 
+## Phase 7a — Owner recurrence amendment
+
+Scope and policies: [docs/recurrence.md](./docs/recurrence.md). Keep the existing UI design. The owner explicitly selected advance 50/75/90 notifications and whole-series completion.
+
+- [x] Add daily/weekly/monthly rules, intervals, selected weekdays, month-day intent and optional inclusive end dates to strict create/edit validation and persisted schema.
+- [x] Review/apply additive development migrations with recurrence/interval-anchor constraints and an active-series due index; retain existing one-off data.
+- [x] Implement local calendar generation, month-end recovery, future DST policy and bounded jumps across missed occurrences.
+- [x] Extend the locked worker transaction to advance due series even when all old notifications are terminal; cancel old work, preserve original creation time, increment versions and insert new per-occurrence percentage schedules atomically.
+- [x] Preserve one-off scheduling; apply whole-series completion/deletion and deliberate reopening; fence old claims and preserve notification/attempt history.
+- [x] Add repeat controls to manual creation and AI confirmation, recurrence labels to saved details/dashboard and accurate repeating email context.
+- [x] Teach the single-call AI parser to recognize repeat patterns and produce useful descriptions grounded in transcript facts; retain explicit confirmation/save and clarification for unsupported patterns.
+- [x] Replace the always-open saved editor with read-only details and an explicit Edit reminder action; close after successful save and retain input on validation/conflict failures.
+- [x] Complete focused PostgreSQL/browser regression checks and production web/worker validation; record outcomes below.
+- [x] Verify live provider recurrence extraction/description and one-off interpretation regressions: all seven synthetic Gemini examples passed.
+- [ ] Verify representative physical microphone transcription; provider interpretation does not establish browser speech-service accuracy.
+- [ ] Verify automatic recurring delivery after the separately deferred Azure deployment (Phase 8); no local test proves hosted execution.
+
 ## Phase 8 — Deployment and hardening
 
 Expected files: production deployment configuration, CI/release workflow, production migration procedure, monitoring/recovery runbooks, smoke-test checklist.
@@ -436,3 +454,23 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Added `docs/ui-pwa.md`; native iOS/Android installation/upgrade, hands-on accessibility and deployed HTTPS installability remain open. Azure deployment remains deferred, so hosted scheduled delivery is still inactive. No site was published and no test email was sent.
 - Owner-requested AI amendment: correct clear transcription mistakes from context; ask one focused question for uncertainty. “Before [date]” with no explicit clock becomes 23:59 on the previous local calendar day using server-side Temporal arithmetic; “by/on” retains that date's end, and midnight is the start of the named date. Review explains the adjustment and stays editable. One structured provider request per interpretation; no extra AI agent/action chain or notification-policy change. The default model uses its supported low thinking setting for extraction; custom model overrides retain provider defaults.
 - Expanded `ai:check` with before/by/year-boundary, speech-error and midnight examples. Live verification remains pending: generation timed out and ultimately returned HTTP 504 through the session proxy, while a read-only models request succeeded. Local strict-output and year/leap-day boundary checks pass. No database writes or emails were produced by the live AI diagnostic.
+
+### October 19, 2026 — Recurring reminders and saved-detail behavior implemented
+
+- Owner explicitly expanded the original V1 scope to recurrence and confirmed two policies in chat: retain 50/75/90 advance notifications for every occurrence, and Mark complete stops the whole repeating reminder. Updated PRD to version 1.1, added D11, and documented the policies in `docs/recurrence.md` without changing the application’s visual direction.
+- Added daily, weekly and monthly patterns, bounded intervals, selected ISO weekdays, explicit month-day intent and optional inclusive end dates. Calendar generation preserves the stored zone/local time, restores day 31 after shorter months, and applies documented future DST gap/overlap handling. Original creation timestamps and one-off behavior remain intact.
+- Generated, reviewed and applied additive migrations `0004`/`0005` to development and the isolated test database. Recurrence JSON and a separate interval anchor are constrained; an active recurring-deadline index supports worker selection. No existing one-off deadline or notification was rewritten.
+- Extended the reminder-first locked worker transaction to advance elapsed series even when every old notification is terminal. Cursor movement, cancellation, version/revision increments and fresh percentage schedules commit together. Long outages skip elapsed occurrences and use existing catch-up coalescing for the next future event. Completion/deletion stop the series; reopening is explicit and respects its end date. Original SMTP claim fencing and retry limits remain in place.
+- Added recurrence fields to manual/AI confirmation, labels on cards/details, and accurate recurring interval context in email templates. AI descriptions summarize supplied event/preparation details in clear wording without invented facts; one structured provider request and explicit review/save remain required.
+- Saved reminders now open read-only with Edit reminder. Successful edits close the form, Cancel discards edits, and validation/stale-revision errors preserve input. Corrected repeat-field label associations during browser verification; the final reminder journey passes for repeat confirmation/persistence, description persistence, hidden saved fields, explicit editing and the complete original one-off CRUD/isolation lifecycle. PWA/mobile/offline/privacy regression also passes.
+- Verification: 45 unit checks; three new PostgreSQL recurrence checks and four existing queue checks pass. These verify concurrent advancement, per-occurrence percentage anchors, whole-series completion, advancement with all old notifications sent, missed dates/end boundaries and rollback after a forced next-queue insert failure. Tests exclude unrelated pre-existing test reminder IDs rather than assuming the isolated database is empty.
+- Live Gemini verification: all seven synthetic examples pass, including Sunday 2 PM recurrence with progress-note description, local relative dates, vague-time clarification, before/by date boundaries, a clear speech typo and midnight. This closes the prior synthetic provider-timeout gate. It does not establish physical microphone accuracy.
+- Final lint, TypeScript, formatting and production web/standalone-worker builds pass. No live SMTP email was sent and no new hosted scheduler was provisioned. Azure deployment and physical device/microphone checks remain separate pending gates.
+
+### October 20, 2026 - Investigated upstream parsing failure and switched model
+
+- Read the actual redacted provider error: 3.8 Flash returned HTTP 504 / DEADLINE_EXCEEDED even for a minimal prompt outside the parser; direct REST also timed out. Metadata succeeded. No evidence points to the recurrence schema causing this failure.
+- Confirmed 2.5 Flash-Lite rejects this project as unavailable to new users. 3.5 Flash-Lite responds and has a documented free tier; changed the app/sample/local/smoke defaults to that stable model with supported low thinking. Quotas and sustained availability remain project/provider dependent; no billing settings changed.
+- Retained strict date policies and added an explicit by-date prompt example after a candidate run confused by with before. All seven existing live synthetic checks pass on the final configuration. No actual owner transcript was sent, reminders saved or emails sent. Recording and repeating-event implementation are unchanged.
+
+- Final validation: all 45 unit checks, TypeScript and focused lint pass. The single live recurrence check also passes using the final `.env.local` configuration without a model override.

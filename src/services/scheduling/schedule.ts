@@ -1,5 +1,20 @@
 export const thresholds = [50, 75, 90] as const;
 export type Clock = () => Date;
+export function reminderSchedule(
+  row: {
+    createdAt: Date;
+    dueAt: Date;
+    recurrence?: unknown;
+    occurrenceAnchorAt?: Date | null;
+  },
+  now: Date,
+) {
+  return calculateSchedule(
+    row.recurrence ? (row.occurrenceAnchorAt ?? row.createdAt) : row.createdAt,
+    row.dueAt,
+    now,
+  );
+}
 export function calculateSchedule(createdAt: Date, dueAt: Date, now: Date) {
   if (![createdAt, dueAt, now].every((date) => Number.isFinite(date.getTime())))
     throw new Error("Schedule requires valid instants.");

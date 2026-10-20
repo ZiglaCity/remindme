@@ -10,6 +10,7 @@ const output = {
   title: "Submit report",
   description: null,
   priority: null,
+  recurrence: null,
   date: "2026-10-20",
   time: "15:00",
   deadlineType: "date_time",

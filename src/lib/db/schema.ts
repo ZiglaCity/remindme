@@ -9,7 +9,9 @@ import {
   uuid,
   date,
   check,
+  jsonb,
 } from "drizzle-orm/pg-core";
+import type { StoredRecurrence } from "../validation/recurrence";
 import { sql } from "drizzle-orm";
 
 const instant = (name: string) => timestamp(name, { withTimezone: true });
@@ -106,6 +108,8 @@ export const reminders = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     sourceText: text("source_text"),
+    recurrence: jsonb("recurrence").$type<StoredRecurrence>(),
+    occurrenceAnchorAt: instant("occurrence_anchor_at"),
     dueAt: instant("due_at").notNull(),
     dueDate: date("due_date", { mode: "string" }).notNull(),
     deadlineType: text("deadline_type", {
@@ -152,6 +156,19 @@ export const reminders = pgTable(
     check(
       "reminder_deadline_type_valid",
       sql`${t.deadlineType} in ('date_only','date_time')`,
+    ),
+    index("reminders_recurring_due_idx")
+      .on(t.dueAt, t.id)
+      .where(
+        sql`${t.recurrence} is not null and ${t.status} = 'active' and ${t.deletedAt} is null`,
+      ),
+    check(
+      "reminder_recurrence_valid",
+      sql`${t.recurrence} is null or coalesce((jsonb_typeof(${t.recurrence}) = 'object' and ${t.recurrence}->>'frequency' in ('daily','weekly','monthly') and (${t.recurrence}->>'interval')::integer between 1 and 365 and ${t.recurrence}->>'anchorDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' and ${t.recurrence}->>'localTime' ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and jsonb_typeof(${t.recurrence}->'weekdays') = 'array'), false)`,
+    ),
+    check(
+      "reminder_occurrence_anchor_valid",
+      sql`(${t.recurrence} is null and ${t.occurrenceAnchorAt} is null) or (${t.recurrence} is not null and ${t.occurrenceAnchorAt} is not null)`,
     ),
     check(
       "reminder_versions_positive",

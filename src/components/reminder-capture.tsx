@@ -162,7 +162,7 @@ export function ReminderCapture({
             {speech.listening
               ? "Listening… Pauses up to 15 seconds are allowed. Stop to review and edit your transcription."
               : !speech.supported
-                ? "Voice input isn’t supported here. Type your reminder instead."
+                ? "Speech recognition isn’t supported in this browser. Use Chrome for voice, or type here."
                 : "You can edit the transcription before continuing."}
           </span>
         </div>

@@ -7,6 +7,7 @@ import {
 } from "../lib/db/schema";
 import { retryAt } from "../lib/email/policy";
 import { suppression, type DeliveryClaim } from "./delivery";
+import { advanceRecurring } from "./recurrence";
 import type { Database } from "./preferences";
 import type { z } from "zod";
 import type { workerEnvSchema } from "../lib/env/schema";
@@ -46,11 +47,11 @@ export async function claimBatch(
           options.exclude?.length
             ? notInArray(reminders.id, options.exclude)
             : undefined,
-          sql`exists (select 1 from scheduled_notifications n where n.reminder_id = ${reminders.id} and n.status in ('pending','processing') and (
+          sql`((${reminders.recurrence} is not null and ${reminders.status} = 'active' and ${reminders.deletedAt} is null and ${reminders.dueAt} <= ${now}) or exists (select 1 from scheduled_notifications n where n.reminder_id = ${reminders.id} and n.status in ('pending','processing') and (
         ${reminders.deletedAt} is not null or ${reminders.status} <> 'active' or ${reminders.dueAt} <= ${now} or n.schedule_version <> ${reminders.scheduleVersion}
         or (n.status = 'pending' and n.scheduled_for <= ${now} and (n.next_attempt_at is null or n.next_attempt_at <= ${now}))
         or (n.status = 'processing' and (n.processing_started_at is null or n.processing_started_at <= ${cutoff}))
-      ))`,
+      )))`,
           sql`(${reminders.deletedAt} is not null or ${reminders.status} <> 'active' or ${reminders.dueAt} <= ${now} or not exists (
         select 1 from scheduled_notifications active where active.reminder_id = ${reminders.id} and active.schedule_version = ${reminders.scheduleVersion}
         and active.status = 'processing' and active.processing_started_at > ${cutoff}
@@ -62,6 +63,15 @@ export async function claimBatch(
       .for("update", { skipLocked: true });
     for (const reminder of owners) {
       result.examined.push(reminder.id);
+      if (
+        reminder.recurrence &&
+        reminder.status === "active" &&
+        !reminder.deletedAt &&
+        reminder.dueAt <= now
+      ) {
+        await advanceRecurring(tx, reminder, now, "occurrence_elapsed");
+        continue;
+      }
       const rows = await tx
         .select()
         .from(scheduledNotifications)

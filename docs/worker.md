@@ -84,6 +84,8 @@ Do not publish local settings or show host keys. Confirm the deployment contains
 
 ## Failure limitations and recovery
 
+The October 19 recurrence extension also advances active repeating reminders at their deadlines, including those with no outstanding old notifications. Cursor/revision movement, cancellation and fresh 50/75/90 schedules commit under the same reminder lock. The per-invocation admission budget counts these advances as examined reminders; a newly advanced series is considered for sending on the following invocation. Apply recurrence migrations and rebuild the standalone artifact before upgrading. See [recurrence scheduling and outage policy](./recurrence.md).
+
 SMTP acceptance before a crash can be followed by a retry and duplicate delivery; a repeated Message-ID is only a trace aid. A final state check can also race with completion/deletion after SMTP has begun. These limits remain documented in [email delivery](./email.md); neither Azure timer coordination nor claim tokens can retract accepted mail or provide universal SMTP idempotency.
 
 For a database outage, the timer fails safely and logs a sanitized invocation failure. After connectivity returns, subsequent invocations reclaim eligible stale work within the recovery cap. For terminal `failed` records, investigate the safe error category, credentials, approval, deadline and history; do not blindly reset sent/uncertain work to pending. A worker crash before sending may waste one recovery slot; a crash after acceptance requires checking the recipient before any manual retry. Do not run migrations or edit queue statuses from a public endpoint.

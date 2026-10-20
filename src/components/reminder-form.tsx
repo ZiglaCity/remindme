@@ -3,6 +3,7 @@ import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import type { ReminderDraft } from "@/lib/validation/ai";
 import { SessionRecovery } from "./session-recovery";
+import type { Recurrence } from "@/lib/validation/recurrence";
 const subscribe = () => () => {};
 const browserZone = () => {
   try {
@@ -18,6 +19,7 @@ export type ReminderFormInitial = {
   description: string | null;
   priority: "low" | "normal" | "high";
   revision: number;
+  recurrence?: Recurrence | null;
   deadline: {
     type: "date_only" | "date_time";
     date: string;
@@ -32,12 +34,14 @@ export function ReminderForm({
   sourceText,
   detectTimeZone = false,
   onSaved,
+  onCancel,
 }: {
   timeZone: string;
   initial?: ReminderFormInitial;
   draft?: ReminderDraft;
   sourceText?: string;
   detectTimeZone?: boolean;
+  onCancel?: () => void;
   onSaved?: (saved: {
     revision: number;
     status: "active" | "completed" | "archived";
@@ -55,6 +59,12 @@ export function ReminderForm({
   );
   const currentZone = enteredZone ?? (detectTimeZone ? detectedZone : timeZone);
   const [kind, setKind] = useState(values?.deadline.type ?? "date_time");
+  const [repeat, setRepeat] = useState<"none" | Recurrence["frequency"]>(
+    values?.recurrence?.frequency ?? "none",
+  );
+  const [weekdays, setWeekdays] = useState<number[]>(
+    values?.recurrence?.weekdays ?? [],
+  );
   const [revision, setRevision] = useState(initial?.revision);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState(false);
@@ -85,6 +95,19 @@ export function ReminderForm({
           description: String(form.get("description")) || null,
           priority: String(form.get("priority")),
           deadline,
+          recurrence:
+            repeat === "none"
+              ? null
+              : {
+                  frequency: repeat,
+                  interval: Number(form.get("repeatInterval")),
+                  weekdays: repeat === "weekly" ? weekdays : [],
+                  monthDay:
+                    repeat === "monthly"
+                      ? Number(form.get("monthDay")) || null
+                      : null,
+                  endsOn: String(form.get("repeatEnd")) || null,
+                },
           ...(initial ? { expectedRevision: revision } : {}),
           ...(!initial && sourceText ? { sourceText } : {}),
         };
@@ -223,6 +246,130 @@ export function ReminderForm({
             Date-only deadlines use 11:59 PM in the chosen time zone.
           </p>
         )}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="reminder-repeat" className="block">
+              Repeats
+            </label>
+            <select
+              id="reminder-repeat"
+              value={repeat}
+              onChange={(event) =>
+                setRepeat(event.target.value as typeof repeat)
+              }
+              className={field}
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          {repeat !== "none" && (
+            <div>
+              <label htmlFor="repeat-interval" className="block">
+                Repeat every
+              </label>
+              <input
+                id="repeat-interval"
+                name="repeatInterval"
+                type="number"
+                required
+                min={1}
+                max={365}
+                defaultValue={values?.recurrence?.interval ?? 1}
+                className={field}
+              />
+              <span className="text-sm text-stone-600">
+                {repeat === "daily"
+                  ? "day(s)"
+                  : repeat === "weekly"
+                    ? "week(s)"
+                    : "month(s)"}
+              </span>
+            </div>
+          )}
+        </div>
+        {repeat === "weekly" && (
+          <fieldset className="space-y-2">
+            <legend className="font-medium">Repeat on</legend>
+            <div className="flex flex-wrap gap-3">
+              {[
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ].map((day, index) => (
+                <label key={day} className="repeat-day flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={weekdays.includes(index + 1)}
+                    onChange={(event) =>
+                      setWeekdays((previous) =>
+                        event.target.checked
+                          ? [...previous, index + 1].sort((a, b) => a - b)
+                          : previous.filter((value) => value !== index + 1),
+                      )
+                    }
+                  />
+                  {day}
+                </label>
+              ))}
+            </div>
+            <p className="text-sm text-stone-600">
+              Leave all unchecked to repeat on the first date’s weekday. The
+              first date must match a selected day.
+            </p>
+          </fieldset>
+        )}
+        {repeat !== "none" && (
+          <>
+            {repeat === "monthly" && (
+              <div>
+                <label htmlFor="repeat-month-day" className="block">
+                  Day of month (optional)
+                </label>
+                <input
+                  id="repeat-month-day"
+                  aria-describedby="repeat-month-day-help"
+                  name="monthDay"
+                  type="number"
+                  min={1}
+                  max={31}
+                  defaultValue={values?.recurrence?.monthDay ?? ""}
+                  className={field}
+                />
+                <span
+                  id="repeat-month-day-help"
+                  className="text-sm text-stone-600"
+                >
+                  Leave blank to use the first date’s day. Shorter months use
+                  their last day.
+                </span>
+              </div>
+            )}
+            <label className="block">
+              Repeat until (optional)
+              <input
+                type="date"
+                name="repeatEnd"
+                min="0001-01-01"
+                max="9999-12-31"
+                defaultValue={values?.recurrence?.endsOn ?? ""}
+                className={field}
+              />
+            </label>
+            <p className="text-sm text-stone-600">
+              Each occurrence gets advance check-ins at 50%, 75% and 90% of its
+              interval. Mark complete stops the entire repeating reminder.
+              Monthly dates use the last day when needed; repeats keep this time
+              zone.
+            </p>
+          </>
+        )}
         <p role="alert" className="text-sm text-red-800">
           {error}
         </p>
@@ -235,6 +382,15 @@ export function ReminderForm({
                 ? "Save changes"
                 : "Save reminder"}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="button button-outline ml-3"
+          >
+            Cancel editing
+          </button>
+        )}
         {conflict && (
           <button
             type="button"
