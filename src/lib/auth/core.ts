@@ -29,7 +29,20 @@ export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
       minPasswordLength: 12,
       maxPasswordLength: 128,
     },
-    account: { accountLinking: { enabled: false } },
+    account: {
+      accountLinking: {
+        enabled: true,
+        disableImplicitLinking: false,
+        // V1 password accounts are unverified locally. A verified Google
+        // identity may link the same email, as requested by the owner.
+        requireLocalEmailVerified: false,
+        trustedProviders: [],
+        allowDifferentEmails: false,
+      },
+    },
+    onAPIError: {
+      errorURL: new URL("/login?error=oauth", env.BETTER_AUTH_URL).href,
+    },
     session: { cookieCache: { enabled: false } },
     advanced: {
       disableCSRFCheck: false,

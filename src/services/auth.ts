@@ -1,4 +1,5 @@
 import type { Auth } from "../lib/auth/core";
+import { isAPIError } from "better-auth/api";
 import { readBoundedBody } from "../lib/http/body";
 import { errorResponse } from "../lib/http/errors";
 
@@ -51,6 +52,13 @@ export function createAuthHandler(auth: Auth) {
       headers.set("Cache-Control", "no-store");
       if (headers.has("X-Retry-After"))
         headers.set("Retry-After", headers.get("X-Retry-After")!);
+      // Redirects can inherit a JSON content type but have no JSON body.
+      // Parsing them would turn a normal OAuth callback into a generic 500.
+      if ([302, 303, 307, 308].includes(response.status)) {
+        headers.delete("content-type");
+        headers.delete("content-length");
+        return new Response(null, { status: response.status, headers });
+      }
       if (headers.get("Content-Type")?.includes("application/json")) {
         headers.delete("content-length");
         return Response.json(publicResult(await response.json()), {
@@ -60,6 +68,18 @@ export function createAuthHandler(auth: Auth) {
       }
       return new Response(response.body, { status: response.status, headers });
     } catch (error) {
+      // OAuth uses redirect APIErrors for successful and rejected callbacks.
+      // Preserve their Location/Set-Cookie headers instead of reporting a 500.
+      if (
+        isAPIError(error) &&
+        [302, 303, 307, 308].includes(error.statusCode)
+      ) {
+        const headers = new Headers(error.headers);
+        if (headers.has("Location")) {
+          headers.set("Cache-Control", "no-store");
+          return new Response(null, { status: error.statusCode, headers });
+        }
+      }
       return errorResponse(error);
     }
   };

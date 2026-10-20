@@ -45,7 +45,7 @@ The owner confirmed Chrome voice and the repaired AI flow work. On October 20 th
 
 Before declaring every earlier gate complete:
 
-- [ ] Run live Google sign-in, reload/sign-out and matching-email collision checks using controlled accounts (Phase 2).
+- [ ] Run live Google sign-in, reload/sign-out and verified same-email linking checks using controlled accounts (Phase 2).
 - [ ] Verify denied microphone access preserves text and manual creation in supported Chrome (Phase 4).
 - [ ] Complete keyboard and screen-reader checks (Phase 7).
 - [ ] Exercise actual isolated database disconnect/wake-up, stalled SMTP and process-termination recovery (Phase 6); use synthetic data and no real recipient sends.
@@ -65,7 +65,7 @@ The owner confirmed D1–D10 on October 18, 2026. The full policies and acceptan
 - D6: title 160, description 2,000, source 4,000 characters; priority low/normal/high (normal default); pagination 20/max 100; AI 10/min/user; auth 10/15min/key; SMTP delays 1/5/15/60 minutes, five attempts; batch 25, concurrency 5, lease five minutes; validate configurable bounds.
 - D7: transaction-capable PostgreSQL driver in both runtimes; verify row locks using real PostgreSQL.
 - D8: atomic PostgreSQL-backed shared rate limiting with expiry/cleanup and HTTP 429.
-- D9: server-enforced tester allowlist by default; explicit all/public mode opens access; separately approved SMTP recipients; verified Google identities; no automatic email-only account linking.
+- D9: server-enforced tester allowlist by default; explicit all/public mode opens access; separately approved SMTP recipients; verified Google identities; verified Google same-email linking per the October 20 owner amendment; no linking from unverified claims.
 - D10: profile time-zone changes affect new reminders only; existing deadlines, schedules, and interpretation zones remain unchanged.
 
 Temporal and the confirmed domain policies are implemented. Actual Azure host startup and hosted delivery remain deferred to Phase 8. Compatibility and local verification do not imply deployment verification.
@@ -110,8 +110,9 @@ Expected files: `src/lib/auth/`, auth schema and migration, preference schema/re
 - [x] Add versioned auth and `user_preferences` migrations; reference the actual Better Auth user ID type rather than assuming auth IDs are UUIDs.
 - [x] Implement email/password registration, sign-in, sign-out, validation messages, and session persistence.
 - [x] Implement Google OAuth with verified-claim checks, conditional UI, trusted origins, and documented callbacks.
-- [ ] Configure real Google credentials and run the live OAuth/collision checks.
-- [x] Disable automatic account linking and verify its configuration and the blocked account-management surface. Live matching-email provider collision behavior remains part of the Google gate.
+- [x] Configure real Google credentials and confirm the provider consent/token exchange reaches the app callback (owner evidence, October 20).
+- [ ] Confirm live verified same-email sign-in and new Google-user sign-in after the October 20 linking/callback fix.
+- [x] Enable owner-requested automatic linking for verified Google identities with the same email; preserve user ID/data/password login and reject unverified claims or different-email linking. Keep non-V1 account-management endpoints blocked. The live matching-email retry remains a Google gate.
 - [x] Verify supported password hashing and production cookie settings: HttpOnly, Secure, and appropriate SameSite.
 - [x] Enforce sessions and the D9 tester allowlist on the server for protected pages/APIs; handle expired/revoked sessions and non-approved accounts consistently.
 - [x] Add PostgreSQL-backed atomic auth rate limiting (D6/D8), cleanup and HTTP 429; verify trusted-origin/CSRF handling for cookie-authenticated mutations.
@@ -128,7 +129,7 @@ Expected files: `src/lib/auth/`, auth schema and migration, preference schema/re
 Exit gate:
 
 - [x] Registration, password sign-in/out, reload persistence, and protected route rejection pass.
-- [ ] Google OAuth is verified in a suitable configured test environment; account collisions do not cause unsafe linking.
+- [ ] Google OAuth is verified in a suitable configured test environment; verified same-email linking preserves the existing identity and unverified claims cannot link.
 - [x] Preferences are isolated; unauthenticated, non-allowlisted, and cross-user access is rejected server-side. Verify Google identity claims and explicit public-access configuration. Extend ownership tests to every reminder path in Phase 3.
 
 ## Phase 3 — Reminder CRUD and deadline handling
@@ -359,7 +360,7 @@ Exit gate:
 ## Final V1 acceptance checklist
 
 - [x] Email/password works with persistent sessions, supported hashing, server enforcement and tested isolation.
-- [ ] Google OAuth and live matching-email collision behavior are verified; credentials/configuration alone do not close this gate.
+- [ ] Google OAuth signs into the existing same-email user and creates new Google users in live testing; credentials/configuration alone do not close this gate.
 - [x] Reminder, preference, notification, and history access is isolated per user, including direct API/server access.
 - [x] AI produces validated, editable data and requires confirmation; voice has reliable text fallback.
 - [x] Manual CRUD remains available when AI fails.
@@ -503,3 +504,12 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 
 - Fresh audit results: 45 unit checks, 29 PostgreSQL integration checks, full lint, formatting, optimized production compilation with TypeScript/page generation, and standalone worker packaging pass. Browser public/auth/PWA journeys pass; a targeted reminder/recurrence CRUD rerun passes after adding the missing detail-navigation wait. Trace evidence showed the first run clicked a dashboard action before the detail route arrived; no application change was required.
 - Remaining closure sequence: live Google OAuth/collision, denied/reallowed microphone, hands-on keyboard/screen-reader, isolated real failure drills, then physical PWA installation/upgrade when a trusted origin is available. The audit does not declare these complete or start Phase 8.
+
+### October 20, 2026 - Owner-requested Google/password account association
+
+- A real Google callback reached the app but returned `account_not_linked` under the former blanket disabled-linking policy. Owner explicitly requested verified same-email sign-in and automatic creation for new Google users; updated D9/PRD and authentication notes to match.
+- Enabled implicit same-email linking with verified Google claims and preserved local password credentials/user IDs. New Google identities continue through framework user/session creation. Tester admission, CSRF/state/nonce checks and blocked general account-management endpoints remain in force.
+- Fixed the HTTP adapter's attempt to JSON-parse empty redirects; preserve redirect status, Location and session/state cookies rather than emitting generic internal-error JSON. Added focused checks for redirect handling and actual callback/linking/new-user persistence with a synthetic Google exchange.
+- Live existing-email/new-email Google sign-in remains pending the owner's retry; no real Google token exchange or user-account modification was performed by the automated tests.
+
+- Final verification: 47 unit checks, nine existing auth integration checks and the new real callback/linking/new-user/rejection integration scenario pass. TypeScript and focused lint pass. Google exchange is synthetic in automated checks; the owner must start a fresh live sign-in rather than reload the old callback code.

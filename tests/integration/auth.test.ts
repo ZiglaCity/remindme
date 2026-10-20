@@ -260,8 +260,13 @@ describe("real Better Auth and owner boundaries", () => {
       ).status,
     ).toBe(403);
   });
-  it("disables account linking and does not trust an unverified Google profile", async () => {
-    expect(auth.options.account?.accountLinking?.enabled).toBe(false);
+  it("enables same-email linking but does not trust an unverified Google profile", async () => {
+    expect(auth.options.account?.accountLinking).toMatchObject({
+      enabled: true,
+      requireLocalEmailVerified: false,
+      trustedProviders: [],
+      allowDifferentEmails: false,
+    });
     const googleAuth = createAuth(connection.db, {
       ...env,
       GOOGLE_CLIENT_ID: "test-client",

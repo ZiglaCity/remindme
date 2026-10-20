@@ -118,7 +118,7 @@ Requirements:
 8. Passwords must be securely hashed using the authentication framework's supported password-hashing implementation.
 9. Session cookies must use appropriate `HttpOnly`, `Secure` in production, and `SameSite` settings.
 10. No email verification or password-reset workflow is required in V1.
-11. Do not automatically link accounts merely because their email strings match. Any account linking must use a secure, explicitly configured process that accounts for provider identity and email verification.
+11. Do not automatically link accounts merely because their email strings match. Owner amendment (October 20): a verified Google identity with the same email links to the existing email/password user and signs in; otherwise Google creates a new user. Preserve the existing user ID, data and password login. Reject unverified Google claims and different-email linking; use the framework's configured provider-identity and session checks.
 12. Never expose OAuth client secrets, password hashes, session tokens or authentication internals to the browser.
 
 Because email verification is intentionally excluded, users can register with an email address they do not control. Document this limitation, and do not represent unverified addresses as verified identities.
