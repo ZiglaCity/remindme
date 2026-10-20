@@ -323,6 +323,13 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   await page
     .getByRole("link", { name: "Renamed browser reminder", exact: true })
     .click();
+  await expect(page).toHaveURL(new RegExp(`/app/reminders/${id}$`));
+  await expect(
+    page.getByRole("heading", {
+      name: "Renamed browser reminder",
+      exact: true,
+    }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect((await page.request.get(`/api/reminders/${id}`)).status()).toBe(200);

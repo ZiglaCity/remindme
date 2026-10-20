@@ -4,7 +4,7 @@ Source of truth: [prd.md](./prd.md), version 1.1 including the October 19 recurr
 
 ## Starting point and scope
 
-Repository inspection found `prd.md`, a minimal `README.md`, and `LICENSE`. There is no application, package configuration, schema, migration, or test suite yet. No implementation conflicts were found. This document plans the work; it does not indicate that external services have been configured or tested.
+At the October 18 planning checkpoint, the repository contained `prd.md`, a minimal `README.md`, and `LICENSE`. The application, schema, migrations and checks have since been implemented. The tracker and dated evidence below describe current completion; the original starting snapshot is historical.
 
 Build V1 in the PRD's order: correctness, user isolation, scheduling, delivery, usability, then polish. Keep Next.js App Router, TypeScript, Zod, Better Auth, Drizzle, Neon PostgreSQL, Gemini, browser speech recognition, Nodemailer/SMTP, Azure Functions, and Vercel as the agreed stack.
 
@@ -29,13 +29,29 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, native apps,
 | 1     | Repository, runtime, database foundation             | Complete                                       |
 | 2     | Authentication and ownership boundaries              | Implemented; live Google OAuth pending         |
 | 3     | Manual reminder CRUD and durable schedules           | Complete                                       |
-| 4     | Confirmed AI parsing and optional voice capture      | Implemented; live microphone checks pending    |
+| 4     | Confirmed AI parsing and optional voice capture      | Chrome voice confirmed; denial checks pending  |
 | 5     | SMTP delivery, attempts, and retries                 | Complete                                       |
 | 6     | Independently deployed Azure timer worker            | Implemented locally; Azure deployment deferred |
 | 7     | Complete mobile UI and installable PWA               | Implemented; physical device checks pending    |
 | 7a    | Repeats, grounded descriptions and saved detail view | Verified locally; Azure delivery deferred      |
 | 8     | Production deployment and operational hardening      | Not started                                    |
 | 9     | Reproducible documentation and handoff               | Not started                                    |
+
+## Review before Phase 8 - October 20, 2026
+
+See [the requirements audit](./docs/pre-deployment-audit.md) for PRD mapping, verification evidence and exact remaining checks. This review does not authorize or begin deployment.
+
+The owner confirmed Chrome voice and the repaired AI flow work. On October 20 the owner explicitly confirmed Google sign-in and installation on a physical phone have **not** been tested. Keep those gates open. Existing automated crash-state tests are not a substitute for real disconnect/transport/process-termination drills.
+
+Before declaring every earlier gate complete:
+
+- [ ] Run live Google sign-in, reload/sign-out and matching-email collision checks using controlled accounts (Phase 2).
+- [ ] Verify denied microphone access preserves text and manual creation in supported Chrome (Phase 4).
+- [ ] Complete keyboard and screen-reader checks (Phase 7).
+- [ ] Exercise actual isolated database disconnect/wake-up, stalled SMTP and process-termination recovery (Phase 6); use synthetic data and no real recipient sends.
+- [ ] Install/launch/upgrade on physical Android/iOS devices (Phase 7); production HTTPS verification necessarily follows Phase 8 hosting.
+
+Azure subscription/region/cost checks, a real Functions host/timer, automatic one-off/recurring delivery and production security/HTTPS checks remain explicit Phase 8 dependencies. They are not missing local UI features.
 
 ## Confirmed implementation decisions
 
@@ -52,7 +68,7 @@ The owner confirmed D1–D10 on October 18, 2026. The full policies and acceptan
 - D9: server-enforced tester allowlist by default; explicit all/public mode opens access; separately approved SMTP recipients; verified Google identities; no automatic email-only account linking.
 - D10: profile time-zone changes affect new reminders only; existing deadlines, schedules, and interpretation zones remain unchanged.
 
-Implementation follow-ups: select the DST library in Phase 3, implement and test each policy in its phase, and verify actual Azure startup in Phase 6. Compatibility verification does not imply deployment verification.
+Temporal and the confirmed domain policies are implemented. Actual Azure host startup and hosted delivery remain deferred to Phase 8. Compatibility and local verification do not imply deployment verification.
 
 ## Phase 1 — Repository and foundation
 
@@ -182,11 +198,13 @@ Expected files: `src/services/ai/`, parse schemas, `src/app/api/ai/parse/route.t
 - [x] Request microphone access only on user action; explain unsupported browsers, permission denial, and recognition errors while retaining text input.
 - [x] Test valid/malformed/provider-error responses, relative dates with a fixed clock, clarification, input preservation, and no mutation during parse.
 - [x] E2E-test parse → correction → confirmation → persisted reminder using deterministic provider fixtures; separately record a real Gemini smoke check.
-- [ ] Manually verify supported voice capture and unsupported/denied fallbacks on representative browsers.
+- [x] Owner confirmed Chrome voice works and reported the unsupported Firefox path; retain the browser-capability explanation and text fallback.
+- [ ] Manually verify permission-denied/reallowed capture on supported Chrome and retain text/manual fallback; broader device coverage is not established by the Chrome confirmation.
 
 Exit gate:
 
-- [ ] Text and supported voice input produce an editable, validated, explicitly confirmed reminder; provider failures leave manual creation usable.
+- [x] Text and owner-confirmed Chrome voice feed editable, validated confirmation; provider failures retain manual creation. Seven synthetic live checks pass on the configured 3.5 Flash-Lite model.
+- [ ] Close the remaining microphone permission-denied check above before declaring representative browser verification complete.
 
 ## Phase 5 — Email delivery
 
@@ -232,7 +250,8 @@ Expected files: `azure-functions/notification-scheduler/` entry point/package/ho
 
 - [x] Integration-test overlapping workers, unique claims, stale recovery, late stale-worker updates, retry eligibility, partial batch failure, and bounded processing.
 - [x] Test edit/complete/delete during claim and before send; verify old schedule versions cannot produce eligible future sends.
-- [ ] Simulate database disconnect/wake-up delay, SMTP timeout, worker crash before send, and crash after SMTP acceptance before status persistence.
+- [x] Model crash-before-send lease exhaustion, interrupted sending, late acceptance/fencing and uncertain SMTP DATA timeout outcomes in existing unit/PostgreSQL checks; verify sanitized simulated database failure.
+- [ ] Exercise an actual isolated database disconnect/wake-up, a stalled SMTP transport and process termination before/after SMTP acceptance. State-machine fixtures do not prove real transport/process recovery.
 - [x] Verify recorded sent work is skipped; document the residual SMTP acceptance window and post-final-check cancellation race.
 - [ ] Verify subscription plan availability, region, storage requirements, outbound SMTP connectivity, and resource costs before provisioning.
 - [ ] Deploy a development function with its own database/SMTP settings; verify real timer executions, Neon access, receipt, persisted status, and stale recovery.
@@ -240,7 +259,7 @@ Expected files: `azure-functions/notification-scheduler/` entry point/package/ho
 Exit gate:
 
 - [ ] Real due notifications are processed by the deployed timer independently of browser sessions, Vercel requests, or in-memory timers.
-- [ ] Concurrency/recovery tests pass and duplicate-send limitations are documented accurately.
+- [x] Local PostgreSQL concurrency/recovery checks pass and duplicate-send limitations are documented accurately. Actual host/network failure drills remain open above.
 
 ## Phase 7 — Application UI and PWA
 
@@ -280,7 +299,7 @@ Scope and policies: [docs/recurrence.md](./docs/recurrence.md). Keep the existin
 - [x] Replace the always-open saved editor with read-only details and an explicit Edit reminder action; close after successful save and retain input on validation/conflict failures.
 - [x] Complete focused PostgreSQL/browser regression checks and production web/worker validation; record outcomes below.
 - [x] Verify live provider recurrence extraction/description and one-off interpretation regressions: all seven synthetic Gemini examples passed.
-- [ ] Verify representative physical microphone transcription; provider interpretation does not establish browser speech-service accuracy.
+- [x] Owner confirmed physical Chrome voice works after rollback; AI parsing also works after the model switch. This is one-browser owner evidence, not a multi-device accuracy claim. Denied-access coverage remains in Phase 4.
 - [ ] Verify automatic recurring delivery after the separately deferred Azure deployment (Phase 8); no local test proves hosted execution.
 
 ## Phase 8 — Deployment and hardening
@@ -339,20 +358,21 @@ Exit gate:
 
 ## Final V1 acceptance checklist
 
-- [ ] Email/password and Google OAuth work with secure persistent sessions and safe account linking behavior.
-- [ ] Reminder, preference, notification, and history access is isolated per user, including direct API/server access.
-- [ ] AI produces validated, editable data and requires confirmation; voice has reliable text fallback.
-- [ ] Manual CRUD remains available when AI fails.
-- [ ] Date-only, date/time, UTC persistence, IANA zones, relative dates, and DST policy pass tests.
-- [ ] Persisted 50%/75%/90% schedules are transactional, versioned, and replaced correctly on deadline edits.
-- [ ] Completion/deletion suppress pending work, and reopening follows documented rules.
+- [x] Email/password works with persistent sessions, supported hashing, server enforcement and tested isolation.
+- [ ] Google OAuth and live matching-email collision behavior are verified; credentials/configuration alone do not close this gate.
+- [x] Reminder, preference, notification, and history access is isolated per user, including direct API/server access.
+- [x] AI produces validated, editable data and requires confirmation; voice has reliable text fallback.
+- [x] Manual CRUD remains available when AI fails.
+- [x] Date-only, date/time, UTC persistence, IANA zones, relative dates, and DST policy pass tests.
+- [x] Persisted 50%/75%/90% schedules are transactional, versioned, and replaced correctly on deadline edits.
+- [x] Completion/deletion suppress pending work, and reopening follows documented rules.
 - [ ] The real Azure timer claims bounded work safely, handles retries/missed runs, and recovers stale claims.
-- [ ] Configurable SMTP delivers to the correct owner and records attempts/outcomes without leaking private content.
-- [ ] Residual SMTP duplication and cancellation races are documented without exactly-once claims.
+- [x] Configurable SMTP delivers to the correct owner and records attempts/outcomes without leaking private content.
+- [x] Residual SMTP duplication and cancellation races are documented without exactly-once claims.
 - [ ] The mobile-accessible PWA installs where supported, launches `/app`, and does not cache private data unsafely.
 - [ ] Critical automated checks and production smoke tests pass; actual external checks have recorded evidence.
 - [ ] Secrets stay out of Git/client bundles; costs, limitations, deployment, and recovery are documented.
-- [ ] All explicit non-goals remain outside V1.
+- [x] All explicit non-goals remain outside V1.
 
 ## Phase completion log
 
@@ -474,3 +494,12 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Retained strict date policies and added an explicit by-date prompt example after a candidate run confused by with before. All seven existing live synthetic checks pass on the final configuration. No actual owner transcript was sent, reminders saved or emails sent. Recording and repeating-event implementation are unchanged.
 
 - Final validation: all 45 unit checks, TypeScript and focused lint pass. The single live recurrence check also passes using the final `.env.local` configuration without a model override.
+
+### October 20, 2026 - Review of phases 1 through 7a
+
+- Audited the PRD, decision register, TODO, auth/reminder/AI/delivery/worker/PWA implementation, migrations, CI and existing verification coverage. Added `docs/pre-deployment-audit.md` with a requirement/evidence map and remaining manual/external gates.
+- Recorded the owner's Chrome voice/AI success and explicit confirmation that live Google OAuth and physical phone installation are untested. Reconciled completed local acceptance items without checking off external production behavior.
+- Separated modeled worker crash/timeout recovery from unperformed real disconnect, stalled transport and process-kill drills. Azure remains deferred; no deployment or new SMTP send was attempted.
+
+- Fresh audit results: 45 unit checks, 29 PostgreSQL integration checks, full lint, formatting, optimized production compilation with TypeScript/page generation, and standalone worker packaging pass. Browser public/auth/PWA journeys pass; a targeted reminder/recurrence CRUD rerun passes after adding the missing detail-navigation wait. Trace evidence showed the first run clicked a dashboard action before the detail route arrived; no application change was required.
+- Remaining closure sequence: live Google OAuth/collision, denied/reallowed microphone, hands-on keyboard/screen-reader, isolated real failure drills, then physical PWA installation/upgrade when a trusted origin is available. The audit does not declare these complete or start Phase 8.
