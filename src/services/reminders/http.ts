@@ -1,5 +1,4 @@
 import type { Auth } from "../../lib/auth/core";
-import type { AccessPolicy } from "../../lib/auth/policy";
 import { authorize } from "../../lib/auth/authorize";
 import { AppError, errorResponse } from "../../lib/http/errors";
 import { readBoundedBody } from "../../lib/http/body";
@@ -25,14 +24,13 @@ export type ReminderRoute = {
 export function createRemindersHandler(
   db: Database,
   auth: Auth,
-  policy: AccessPolicy,
   origin: string,
   clock: Clock = () => new Date(),
 ) {
   const service = createReminderService(db, clock);
   return async (request: Request, route: ReminderRoute = {}) => {
     try {
-      const { owner } = await authorize(auth, request.headers, policy);
+      const { owner } = await authorize(auth, request.headers);
       if (route.id && !reminderIdInput.safeParse(route.id).success)
         throw new AppError(
           400,

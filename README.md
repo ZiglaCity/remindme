@@ -39,7 +39,7 @@ Keep environment files and Azure local settings out of Git. Only `NEXT_PUBLIC_AP
 
 `src/lib/db/server.ts` and `src/lib/env/server.ts` enforce Next.js server-only imports. Runtime-neutral connection/validation modules support trusted CLI and future worker code; never import connections into client components.
 
-Tester access defaults to server-enforced allowlist mode. Set `TESTER_ACCESS_MODE=all` to explicitly allow everyone (`public` is an alias). SMTP recipient approval stays separate for Phase 5. Profile time-zone changes affect new reminders only.
+Registration and sign-in are open to everyone; reminders and preferences remain isolated by the authenticated user ID. Legacy TESTER_ACCESS_MODE and TESTER_EMAIL_ALLOWLIST settings are ignored and can be removed. SMTP recipient approval remains separate. Profile time-zone changes affect new reminders only. On production Vercel, the canonical auth origin comes from the hosting-provided production domain, avoiding duplicate URL configuration.
 
 Phase 5 adds SMTP delivery, persisted outcomes, bounded retries and a guarded `npm run smtp:check` command; see [email configuration and live checks](./docs/email.md). Automatic queue processing requires the Phase 6 Azure scheduler. Vercel/Azure deployment, live Google OAuth and representative physical microphone checks remain pending. Manual reminder workflows do not require Gemini or SMTP.
 

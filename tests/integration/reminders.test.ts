@@ -35,7 +35,6 @@ const env = parseEnvironment(webEnvSchema, {
   BETTER_AUTH_URL: "http://localhost:3000",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
-  TESTER_EMAIL_ALLOWLIST: emails.join(","),
 });
 const { db, pool } = createDatabase({
   DATABASE_URL: process.env.TEST_DATABASE_URL,
@@ -47,7 +46,6 @@ const service = createReminderService(db, () => new Date(now));
 const handler = createRemindersHandler(
   db,
   auth,
-  env,
   env.BETTER_AUTH_URL,
   () => new Date(now),
 );

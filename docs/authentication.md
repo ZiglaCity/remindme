@@ -1,4 +1,4 @@
-# Authentication and tester access
+# Authentication and account isolation
 
 Phase 2 uses Better Auth 1.7.10 and its matching Drizzle adapter. The framework owns hashing, signed HttpOnly cookies, session storage, expiry, OAuth state, and callbacks. There is no separate session system.
 
@@ -10,10 +10,10 @@ Set these privately in `.env.local`:
 - `BETTER_AUTH_SECRET`: high-entropy random secret, at least 32 characters. Keep separate secrets per environment.
 - `BETTER_AUTH_URL`: the app's exact canonical origin, normally `http://localhost:3000` locally. This is **not** a Neon Auth endpoint: this app hosts Better Auth itself at `/api/auth` and uses Neon for PostgreSQL storage.
 - `NEXT_PUBLIC_APP_URL`: the application URL; contains no secrets.
-- `TESTER_ACCESS_MODE=allowlist`: default, denies access unless the stored account email matches `TESTER_EMAIL_ALLOWLIST` (comma-separated, trimmed, case-insensitive exact addresses).
-- `TESTER_ACCESS_MODE=all`: explicitly enables registration and application access for everyone. `public` is an equivalent compatibility alias. An unknown mode fails validation.
 
-Restart the development server after environment changes. An empty allowlist denies registration/login/application access. Account admission is checked at creation/session creation and every protected application/API operation; removing an address also blocks an existing session from application features. SMTP recipient approval is separate and will be enforced by the Phase 5 delivery implementation.
+Registration and sign-in are public following the October 26 owner amendment. Legacy `TESTER_ACCESS_MODE` and `TESTER_EMAIL_ALLOWLIST` variables are ignored; no allowlist maintenance is needed. Every protected operation still requires a valid session and scopes records to that session's user ID. SMTP recipient approval remains independent.
+
+On production Vercel, `VERCEL_PROJECT_PRODUCTION_URL` supplies the canonical HTTPS origin. Local/self-hosted environments use `BETTER_AUTH_URL`, falling back to `NEXT_PUBLIC_APP_URL` then localhost. Configured URLs are normalized to their origin so trailing slashes do not cause mismatches. Neither request Host nor Origin headers determine the trusted origin. CSRF, same-origin mutations, secure cookies and rate limits remain enabled. Domains configured in Neon Auth do not configure this app's self-hosted Better Auth instance.
 
 Run `npm run db:migrate`, then `npm run dev`. Visit `/register`, create an account with a 12–128 character password, and review the detected time zone under `/app/settings`. If browser detection fails, the visible UTC fallback requires review. New users receive preferences idempotently on first account/settings access, including after OAuth. Profile time-zone changes only update preferences; they do not reinterpret existing reminders.
 
@@ -24,7 +24,7 @@ Set both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to enable the Google butt
 - Local: `http://localhost:3000/api/auth/callback/google` (or the exact origin in `BETTER_AUTH_URL`).
 - Deployment: `https://<your-domain>/api/auth/callback/google`.
 
-Owner amendment, October 20: only Google's verified email claims are accepted, and the same tester access policy applies. Verified Google sign-in links to an existing account with the same email and retains that user ID, password login, preferences and reminder ownership. If no account exists, Better Auth creates the user/provider account and session. Returning Google sign-ins reuse the stored provider subject. Different email addresses are not linked, and no provider is configured as trusted to bypass verification. The existing Google profile hook rejects an unverified claim before linking or user creation. There is no separate V1 account-linking/recovery UI. A live callback must still be checked with the owner's Google account after this change.
+Owner amendment, October 20: only Google's verified email claims are accepted. Verified Google sign-in links to an existing account with the same email and retains that user ID, password login, preferences and reminder ownership. If no account exists, Better Auth creates the user/provider account and session. Returning Google sign-ins reuse the stored provider subject. Different email addresses are not linked, and no provider is configured as trusted to bypass verification. The existing Google profile hook rejects an unverified claim before linking or user creation. There is no separate V1 account-linking/recovery UI. A live callback must still be checked with the owner's Google account after this change.
 
 ## Security boundaries
 
@@ -48,7 +48,7 @@ Set `TEST_DATABASE_URL` to an isolated PostgreSQL database in `.env.test.local` 
 
 `npm run test:integration` covers sessions, hashing, cookies, sign-out, access revocation, origin checks, preferences, account-linking configuration, Google claim validation, and shared atomic limits across separate pools. Live Google exchange is a separate manual gate.
 
-`npm run test:e2e` starts a dedicated server on port 3100 against `TEST_DATABASE_URL`, with generated fixture identities and an overridden test-only secret/allowlist. It does not reuse a running development server or change `.env.local`. Fixture accounts are removed afterward. Google is disabled in this deterministic browser run. CI uses disposable PostgreSQL for these checks.
+`npm run test:e2e` starts a dedicated server on port 3100 against `TEST_DATABASE_URL`, with generated fixture identities and an overridden test-only secret. It does not reuse a running development server or change `.env.local`. Fixture accounts are removed afterward. Google is disabled in this deterministic browser run. CI uses disposable PostgreSQL for these checks.
 
 Official references: [Next.js integration](https://better-auth.com/docs/integrations/next), [Drizzle adapter](https://better-auth.com/docs/adapters/drizzle), [core schema](https://better-auth.com/docs/concepts/database), [atomic custom rate limits](https://better-auth.com/docs/concepts/rate-limit), and [Google](https://better-auth.com/docs/authentication/google). The installed Next.js authentication guide also documents per-render React cache for session lookup; this is not a cross-request session cache.
 

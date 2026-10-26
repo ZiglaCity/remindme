@@ -30,10 +30,6 @@ export const webEnvSchema = databaseEnvSchema.extend({
     .string()
     .regex(/^gemini-[a-z0-9.-]+$/)
     .default("gemini-3.5-flash-lite"),
-  TESTER_ACCESS_MODE: z
-    .enum(["allowlist", "public", "all"])
-    .default("allowlist"),
-  TESTER_EMAIL_ALLOWLIST: z.string().default(""),
   SMTP_APPROVED_RECIPIENTS: z.string().default(""),
   EMAIL_DELIVERY_ENABLED: z
     .enum(["true", "false"])

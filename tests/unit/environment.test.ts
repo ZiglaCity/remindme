@@ -5,6 +5,8 @@ import {
   workerEnvSchema,
 } from "../../src/lib/env/schema";
 
+import { resolveWebEnvironment } from "../../src/lib/env/web";
+
 const web = {
   DATABASE_URL: "postgresql://tester:placeholder@localhost/remindme",
   BETTER_AUTH_SECRET: "a".repeat(32),
@@ -21,10 +23,14 @@ const worker = {
   EMAIL_FROM: "test@example.com",
 };
 describe("runtime-specific environment validation", () => {
-  it("allows web settings without SMTP or Gemini credentials and defaults to restricted access", () => {
-    expect(parseEnvironment(webEnvSchema, web).TESTER_ACCESS_MODE).toBe(
-      "allowlist",
-    );
+  it("allows web settings without SMTP, Gemini or tester admission configuration", () => {
+    const env = parseEnvironment(webEnvSchema, {
+      ...web,
+      TESTER_ACCESS_MODE: "allowlist",
+      TESTER_EMAIL_ALLOWLIST: "",
+    });
+    expect(env.BETTER_AUTH_URL).toBe(web.BETTER_AUTH_URL);
+    expect(env).not.toHaveProperty("TESTER_ACCESS_MODE");
   });
   it("allows worker settings without web/auth/AI secrets", () => {
     expect(parseEnvironment(workerEnvSchema, worker).WORKER_BATCH_SIZE).toBe(
@@ -54,4 +60,29 @@ describe("runtime-specific environment validation", () => {
     expect(message).toBe("Invalid environment settings: DATABASE_URL");
     expect(message).not.toContain("private-password");
   });
+});
+
+it("uses Vercel's production domain despite stale local URLs, and normalizes trailing paths", () => {
+  const resolved = resolveWebEnvironment({
+    ...web,
+    VERCEL_ENV: "production",
+    VERCEL_PROJECT_PRODUCTION_URL: "remindme.example",
+  });
+  expect(resolved.BETTER_AUTH_URL).toBe("https://remindme.example");
+  expect(resolved.NEXT_PUBLIC_APP_URL).toBe("https://remindme.example");
+  expect(
+    resolveWebEnvironment({
+      ...web,
+      BETTER_AUTH_URL: "https://custom.example/",
+    }).BETTER_AUTH_URL,
+  ).toBe("https://custom.example");
+});
+it("does not adopt the production domain for local or preview environments", () => {
+  expect(
+    resolveWebEnvironment({
+      ...web,
+      VERCEL_ENV: "preview",
+      VERCEL_PROJECT_PRODUCTION_URL: "remindme.example",
+    }).BETTER_AUTH_URL,
+  ).toBe(web.BETTER_AUTH_URL);
 });

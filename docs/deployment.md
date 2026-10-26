@@ -22,25 +22,23 @@ Read-only database checks after deployment show fresh deadline/occurrence cancel
 
 Azure does not receive `.env.local` from your laptop or Vercel. In **Function App → Settings → Environment variables → App settings**, enter the worker settings below and apply the changes. Azure exposes these values to the Node process through `process.env`; saving settings restarts the app. Enter plain values without surrounding quotes. Never commit environment files or upload local settings. Keep existing platform-generated storage/deployment/monitoring settings.
 
-| Setting                                             | Vercel Production                                           | Azure worker                                                     |
-| --------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`                                      | Existing application Neon URL, retaining its TLS parameters | Same application database URL                                    |
-| `BETTER_AUTH_SECRET`                                | Private production secret, at least 32 characters           | Not needed                                                       |
-| `BETTER_AUTH_URL`                                   | `https://remindme-zigla.vercel.app`                         | Not needed                                                       |
-| `NEXT_PUBLIC_APP_URL`                               | `https://remindme-zigla.vercel.app` (public)                | Not needed                                                       |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`          | Configured Google credentials                               | Not needed                                                       |
-| `GEMINI_API_KEY`                                    | Private Gemini key                                          | Not needed                                                       |
-| `GEMINI_MODEL`                                      | `gemini-3.5-flash-lite`                                     | Not needed                                                       |
-| `TESTER_ACCESS_MODE`                                | `all` for open signup; otherwise `allowlist`                | Not needed                                                       |
-| `TESTER_EMAIL_ALLOWLIST`                            | Exact comma-separated emails when using allowlist mode      | Not needed                                                       |
-| `SMTP_APPROVED_RECIPIENTS`                          | Approved email addresses for matching UI eligibility        | Same exact comma-separated email addresses                       |
-| `EMAIL_DELIVERY_ENABLED`                            | `false` until hosted delivery is verified, then `true`      | Not used                                                         |
-| `APP_URL`                                           | Not needed by web                                           | `https://remindme-zigla.vercel.app`                              |
-| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Not needed by web                                           | Existing working SMTP credentials and sender                     |
-| `SMTP_PORT`, `SMTP_SECURE`                          | Not needed by web                                           | `587` / `false` for STARTTLS, or `465` / `true` for implicit TLS |
-| `AzureWebJobs.notificationScheduler.Disabled`       | Not applicable                                              | `false` for normal automatic scheduling                          |
+| Setting                                             | Vercel Production                                                                                    | Azure worker                                                     |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL`                                      | Existing application Neon URL, retaining its TLS parameters                                          | Same application database URL                                    |
+| `BETTER_AUTH_SECRET`                                | Private production secret, at least 32 characters                                                    | Not needed                                                       |
+| `BETTER_AUTH_URL`                                   | Optional on production Vercel; hosting supplies its canonical domain. Local: `http://localhost:3000` | Not needed                                                       |
+| `NEXT_PUBLIC_APP_URL`                               | `https://remindme-zigla.vercel.app` (public)                                                         | Not needed                                                       |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`          | Configured Google credentials                                                                        | Not needed                                                       |
+| `GEMINI_API_KEY`                                    | Private Gemini key                                                                                   | Not needed                                                       |
+| `GEMINI_MODEL`                                      | `gemini-3.5-flash-lite`                                                                              | Not needed                                                       |
+| `SMTP_APPROVED_RECIPIENTS`                          | Approved email addresses for matching UI eligibility                                                 | Same exact comma-separated email addresses                       |
+| `EMAIL_DELIVERY_ENABLED`                            | `false` until hosted delivery is verified, then `true`                                               | Not used                                                         |
+| `APP_URL`                                           | Not needed by web                                                                                    | `https://remindme-zigla.vercel.app`                              |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Not needed by web                                                                                    | Existing working SMTP credentials and sender                     |
+| `SMTP_PORT`, `SMTP_SECURE`                          | Not needed by web                                                                                    | `587` / `false` for STARTTLS, or `465` / `true` for implicit TLS |
+| `AzureWebJobs.notificationScheduler.Disabled`       | Not applicable                                                                                       | `false` for normal automatic scheduling                          |
 
-Only `NEXT_PUBLIC_APP_URL` is intended for public exposure. Do not prefix secrets with `NEXT_PUBLIC_`. Vercel variable changes require a new deployment. Setting `EMAIL_DELIVERY_ENABLED=true` changes UI text only; the Azure disabled setting controls actual timer execution. Open signup does **not** open email delivery: unapproved recipients are still blocked. Do not use `all` or `*` for SMTP approvals.
+Only `NEXT_PUBLIC_APP_URL` is intended for public exposure. Do not prefix secrets with `NEXT_PUBLIC_`. Vercel variable changes require a new deployment. Setting `EMAIL_DELIVERY_ENABLED=true` changes UI text only; the Azure disabled setting controls actual timer execution. Registration is public without admission variables. It does **not** open email delivery: unapproved recipients are still blocked. Do not use `all` or `*` for SMTP approvals.
 
 Optional worker settings already default to: `WORKER_BATCH_SIZE=25`, `WORKER_CONCURRENCY=5`, `WORKER_RUN_BUDGET_SECONDS=240`, `WORKER_MAX_RECOVERIES=3`, `PROCESSING_LEASE_SECONDS=300`, `SMTP_MAX_ATTEMPTS=5`, `SMTP_RETRY_DELAYS_SECONDS=60,300,900,3600`. Keep the budget/lease constraints in the schema when adjusting them.
 
@@ -89,3 +87,7 @@ For a worker incident, set the Azure disabled setting to `true` first. It stops 
 Rotate SMTP credentials in Azure, Gemini/Google/auth credentials in Vercel, and database credentials in both runtimes when needed. Auth-secret rotation invalidates sessions. Preserve platform storage identity permissions during changes. See [worker recovery](./worker.md), [email limitations](./email.md), [migrations](../migrations/README.md) and [pre-deployment audit](./pre-deployment-audit.md).
 
 References: [Azure environment settings](https://learn.microsoft.com/en-us/azure/azure-functions/functions-app-settings), [portal/GitHub OIDC setup](https://learn.microsoft.com/en-us/azure/azure-functions/functions-how-to-github-actions), [deployment action](https://github.com/Azure/functions-action), [Flex hosting](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-plan).
+
+## October 26 public-access amendment
+
+The owner removed tester-only account admission. Old tester variables are ignored. Production Vercel uses its platform-provided production domain for Better Auth and mutation origin checks; local configuration stays local. Do not disable CSRF/origin checking to work around a stale domain. Owner confirmed receipt of 50% and 75% notifications for a locally created reminder; the Azure worker processes the shared application database independently of where the reminder was created. The database records two corresponding successful SMTP sends. Owner also confirmed the Vercel delivery-status flag was set and redeployed. Production login retry and physical PWA acceptance remain separate checks.

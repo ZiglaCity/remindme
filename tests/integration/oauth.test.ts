@@ -41,7 +41,6 @@ async function fixture() {
       NEXT_PUBLIC_APP_URL: origin,
       GOOGLE_CLIENT_ID: "synthetic-client",
       GOOGLE_CLIENT_SECRET: "synthetic-secret",
-      TESTER_EMAIL_ALLOWLIST: emails.join(","),
     }),
   );
   const handle = createAuthHandler(auth);

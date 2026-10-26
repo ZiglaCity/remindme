@@ -16,7 +16,6 @@ export async function handleReminders(
     return await createRemindersHandler(
       getDatabase(),
       getAuth(),
-      env,
       env.BETTER_AUTH_URL,
     )(request, route);
   } catch (error) {

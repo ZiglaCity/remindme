@@ -1,6 +1,6 @@
 import "server-only";
-import { parseEnvironment, webEnvSchema } from "./schema";
+import { resolveWebEnvironment } from "./web";
 
 export function getWebEnvironment() {
-  return parseEnvironment(webEnvSchema, process.env);
+  return resolveWebEnvironment(process.env);
 }

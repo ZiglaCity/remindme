@@ -30,14 +30,13 @@ const env = parseEnvironment(webEnvSchema, {
   BETTER_AUTH_SECRET: secret,
   BETTER_AUTH_URL: origin,
   NEXT_PUBLIC_APP_URL: origin,
-  TESTER_EMAIL_ALLOWLIST: emails.join(","),
 });
 const connection = createDatabase({
   DATABASE_URL: process.env.TEST_DATABASE_URL,
 });
 const auth = createAuth(connection.db, env);
 const authHandler = createAuthHandler(auth);
-const settings = createSettingsHandler(connection.db, auth, env, origin);
+const settings = createSettingsHandler(connection.db, auth, origin);
 const identities: { userId: string; cookie: string }[] = [];
 const password = `Test-only-${randomUUID()}`;
 function request(
@@ -100,12 +99,8 @@ afterAll(async () => {
 }, 30_000);
 
 describe("real Better Auth and owner boundaries", () => {
-  it("admits an unlisted account only when all mode is explicitly enabled", async () => {
-    const openAuth = createAuth(connection.db, {
-      ...env,
-      TESTER_ACCESS_MODE: "all",
-      TESTER_EMAIL_ALLOWLIST: "",
-    });
+  it("admits an unlisted account without tester access configuration", async () => {
+    const openAuth = createAuth(connection.db, env);
     const response = await createAuthHandler(openAuth)(
       request("/api/auth/sign-up/email", {
         name: "Open access tester",
@@ -117,7 +112,6 @@ describe("real Better Auth and owner boundaries", () => {
     const current = await authorize(
       openAuth,
       new Headers({ cookie: cookieFrom(response) }),
-      { TESTER_ACCESS_MODE: "all", TESTER_EMAIL_ALLOWLIST: "" },
     );
     expect(current.user.email).toBe(openEmail);
   });
@@ -151,7 +145,6 @@ describe("real Better Auth and owner boundaries", () => {
     const current = await authorize(
       auth,
       new Headers({ cookie: identities[0].cookie }),
-      env,
     );
     expect(current.owner.userId).toBe(identities[0].userId);
     const [credentials] = await connection.db
@@ -209,7 +202,7 @@ describe("real Better Auth and owner boundaries", () => {
     );
     expect((await response.json()).timeZone).toBe("Atlantic/Reykjavik");
   });
-  it("blocks foreign origins, invalid preferences, and removed tester access", async () => {
+  it("blocks foreign origins and invalid preferences", async () => {
     const mutation = (body: unknown, requestOrigin: string) =>
       new Request(`${origin}/api/settings`, {
         method: "PATCH",
@@ -230,23 +223,6 @@ describe("real Better Auth and owner boundaries", () => {
     expect(
       (await settings(mutation({ timeZone: "Fake/Zone" }, origin))).status,
     ).toBe(400);
-    await expect(
-      authorize(auth, new Headers({ cookie: identities[0].cookie }), {
-        ...env,
-        TESTER_EMAIL_ALLOWLIST: "",
-      }),
-    ).rejects.toMatchObject({ status: 403 });
-    expect(
-      (
-        await auth.handler(
-          request("/api/auth/sign-up/email", {
-            name: "No access",
-            email: `blocked-${suffix}@example.com`,
-            password,
-          }),
-        )
-      ).status,
-    ).toBe(403);
     expect(
       (
         await auth.handler(
@@ -300,13 +276,13 @@ describe("real Better Auth and owner boundaries", () => {
     );
     expect(response.status).toBe(200);
     const cookie = cookieFrom(response);
-    const current = await authorize(auth, new Headers({ cookie }), env);
+    const current = await authorize(auth, new Headers({ cookie }));
     expect(current.owner.userId).toBe(identities[0].userId);
     expect(
       (await auth.handler(request("/api/auth/sign-out", {}, cookie))).status,
     ).toBe(200);
     await expect(
-      authorize(auth, new Headers({ cookie }), env),
+      authorize(auth, new Headers({ cookie })),
     ).rejects.toMatchObject({ status: 401 });
   });
 });

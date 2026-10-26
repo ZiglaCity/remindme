@@ -1,6 +1,6 @@
 import type { Auth } from "../lib/auth/core";
 import { authorize } from "../lib/auth/authorize";
-import { preferencesInput, type AccessPolicy } from "../lib/auth/policy";
+import { preferencesInput } from "../lib/auth/policy";
 import { AppError, errorResponse } from "../lib/http/errors";
 import {
   readPreferences,
@@ -12,12 +12,11 @@ import { readBoundedBody } from "../lib/http/body";
 export function createSettingsHandler(
   db: Database,
   auth: Auth,
-  policy: AccessPolicy,
   origin: string,
 ) {
   return async (request: Request) => {
     try {
-      const { owner } = await authorize(auth, request.headers, policy);
+      const { owner } = await authorize(auth, request.headers);
       if (request.method === "GET")
         return Response.json(await readPreferences(db, owner), {
           headers: { "Cache-Control": "no-store" },

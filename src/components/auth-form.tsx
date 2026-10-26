@@ -8,11 +8,9 @@ import { Brand, Icon } from "./icon";
 export function AuthForm({
   mode,
   googleEnabled,
-  restricted = true,
 }: {
   mode: "login" | "register";
   googleEnabled: boolean;
-  restricted?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -43,22 +41,20 @@ export function AuthForm({
         setError(
           result.error.status === 429
             ? "Too many attempts. Please wait before trying again."
-            : code === "TESTER_ACCESS_DENIED"
-              ? "This account is not approved for tester access."
-              : code === "INVALID_ORIGIN" || code === "INVALID_CALLBACK_URL"
-                ? "This app’s sign-in address is misconfigured. Please contact the app owner."
-                : code === "PASSWORD_TOO_SHORT" || code === "PASSWORD_TOO_LONG"
-                  ? "Use a password with 12–128 characters."
-                  : code === "USER_ALREADY_EXISTS" ||
-                      code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
-                    ? "An account already uses this email. Try signing in."
-                    : code === "INVALID_EMAIL"
-                      ? "Enter a valid email address."
-                      : result.error.status === 403
-                        ? "This request was rejected. Open the app at its configured address and try again."
-                        : mode === "register"
-                          ? "We couldn’t create your account. Check your details or try signing in."
-                          : "We couldn’t sign you in. Check your email and password.",
+            : code === "INVALID_ORIGIN" || code === "INVALID_CALLBACK_URL"
+              ? "This app’s sign-in address is misconfigured. Please contact the app owner."
+              : code === "PASSWORD_TOO_SHORT" || code === "PASSWORD_TOO_LONG"
+                ? "Use a password with 12–128 characters."
+                : code === "USER_ALREADY_EXISTS" ||
+                    code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
+                  ? "An account already uses this email. Try signing in."
+                  : code === "INVALID_EMAIL"
+                    ? "Enter a valid email address."
+                    : result.error.status === 403
+                      ? "This request was rejected. Open the app at its configured address and try again."
+                      : mode === "register"
+                        ? "We couldn’t create your account. Check your details or try signing in."
+                        : "We couldn’t sign you in. Check your email and password.",
         );
       } else {
         router.replace("/app");
@@ -80,9 +76,7 @@ export function AuthForm({
         errorCallbackURL: "/login?error=oauth",
       });
       if (result.error) {
-        setError(
-          "Google sign-in failed. Check your tester access or use email and password.",
-        );
+        setError("Google sign-in failed. Try again or use email and password.");
         setBusy(false);
       }
     } catch {
@@ -125,9 +119,7 @@ export function AuthForm({
             {mode === "register" ? "Create your account" : "Welcome back"}
           </h1>
           <p className="mt-3 text-stone-600">
-            {restricted
-              ? "Access is currently limited to approved testers."
-              : "Your reminders start with an account."}
+            Your reminders start with an account.
           </p>
           <form onSubmit={submit} className="mt-8 space-y-5">
             {mode === "register" && (

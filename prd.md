@@ -3,7 +3,7 @@
 **Document version:** 1.1 (October 19 owner recurrence amendment)\
 **Status:** Ready for implementation  
 **Product type:** Personal reminder and external-memory web application  
-**Initial audience:** Owner and a small group of invited testers  
+**Initial audience:** Public accounts, following the October 26 owner amendment
 **Primary objective:** Build a reliable, installable reminder application that converts natural-language thoughts into scheduled reminders and delivers timely email notifications.
 
 ---
@@ -59,7 +59,7 @@ These features may be considered in later releases, but must not delay V1.
 
 ## 2.1 Target Users
 
-V1 is intended for the application owner and a small group of testers. The architecture must support multiple accounts from the beginning, even though the initial user base is small.
+Following the October 26 owner amendment, V1 registration and sign-in are open to everyone without tester allowlists. The architecture must support multiple accounts from the beginning, even though the initial user base is small.
 
 Every user must have an independent account, reminder collection, notification history and preferences.
 

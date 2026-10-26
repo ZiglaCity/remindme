@@ -4,24 +4,16 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import * as schema from "../db/schema";
 import type { webEnvSchema } from "../env/schema";
 import type { Database } from "../../repositories/preferences";
-import { isTesterAllowed } from "./policy";
 import { createRateLimiter } from "./rate-limit";
 import { z } from "zod";
 
 export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
   const consume = createRateLimiter(db, env.BETTER_AUTH_SECRET);
-  const admit = (email: string) => {
-    if (!isTesterAllowed(email, env))
-      throw new APIError("FORBIDDEN", {
-        code: "TESTER_ACCESS_DENIED",
-        message: "Access is limited to approved testers.",
-      });
-  };
   return betterAuth({
     appName: "RemindMe",
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
-    trustedOrigins: [env.BETTER_AUTH_URL],
+    trustedOrigins: [new URL(env.BETTER_AUTH_URL).origin],
     database: drizzleAdapter(db, { provider: "pg", schema, transaction: true }),
     emailAndPassword: {
       enabled: true,
@@ -63,7 +55,6 @@ export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
                   throw new APIError("FORBIDDEN", {
                     message: "Google must verify your email address.",
                   });
-                admit(profile.email);
                 return {};
               },
             },
@@ -115,19 +106,10 @@ export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
               { "Retry-After": String(result.retryAfter) },
             );
           }
-          admit(email);
         }
       }),
     },
     databaseHooks: {
-      user: {
-        create: {
-          before: async (user) => {
-            admit(user.email);
-            return { data: user };
-          },
-        },
-      },
       session: {
         create: {
           before: async (session, context) => {
@@ -139,7 +121,6 @@ export function createAuth(db: Database, env: z.infer<typeof webEnvSchema>) {
               throw new APIError("FORBIDDEN", {
                 message: "Account unavailable.",
               });
-            admit(owner.email);
             return { data: session };
           },
         },

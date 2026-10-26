@@ -6,9 +6,6 @@ config({
   quiet: true,
 });
 process.env.REMINDME_E2E_RUN_ID ??= randomUUID();
-const testEmails = ["a", "b", "c", "d", "e", "f"].map(
-  (name) => `browser-${name}-${process.env.REMINDME_E2E_RUN_ID}@example.test`,
-);
 const baseURL = "http://127.0.0.1:3100";
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -33,8 +30,6 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "e2e-test-only-" + process.env.REMINDME_E2E_RUN_ID,
       BETTER_AUTH_URL: baseURL,
       NEXT_PUBLIC_APP_URL: baseURL,
-      TESTER_ACCESS_MODE: "allowlist",
-      TESTER_EMAIL_ALLOWLIST: testEmails.join(","),
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
       GEMINI_API_KEY: "",

@@ -10,7 +10,6 @@ async function handle(request: Request) {
     return await createSettingsHandler(
       getDatabase(),
       getAuth(),
-      env,
       env.BETTER_AUTH_URL,
     )(request);
   } catch (error) {

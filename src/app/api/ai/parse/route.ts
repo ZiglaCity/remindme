@@ -15,7 +15,7 @@ export const maxDuration = 30;
 export async function POST(request: Request) {
   try {
     const env = getWebEnvironment();
-    const { owner } = await authorize(getAuth(), request.headers, env);
+    const { owner } = await authorize(getAuth(), request.headers);
     if (request.headers.get("origin") !== new URL(env.BETTER_AUTH_URL).origin)
       throw new AppError(
         403,
