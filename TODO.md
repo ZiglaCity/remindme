@@ -309,8 +309,10 @@ Expected files: production deployment configuration, CI/release workflow, produc
 
 ### Provisioning and release
 
+- October 26 owner-led setup: Vercel is reachable at https://remindme-zigla.vercel.app and the supplied Azure export confirms a Node 22 Flex Function App in Germany West Central. Worker code, secrets and actual timer delivery are not yet evidenced. Follow [the deployment runbook](./docs/deployment.md); `.github/workflows/main_remindme.yml` uses the portal-created OIDC identity and deploys the standalone worker on main pushes or manual dispatch.
+
 - [ ] Check current Vercel plan eligibility/limits, Neon limits, Azure subscription credits/expiry, Functions/storage/logging costs, Gemini quotas, and SMTP limits using current provider sources.
-- [ ] Provision separate production Neon, Vercel, Azure Function/storage, OAuth, Gemini, and SMTP configuration; avoid unnecessary always-running infrastructure.
+- [ ] Finish production service configuration. Owner selected the existing application Neon database; Vercel and Azure resources exist, but separate runtime secrets, worker code deployment and hosted delivery still need verification. Avoid unnecessary always-running infrastructure.
 - [ ] Configure domain/HTTPS, canonical application/auth URLs, trusted origins, Google redirect URIs, production cookies, and appropriate security headers.
 - [ ] Configure Vercel and Azure secrets independently; audit public variables and client bundles for leakage.
 - [ ] Define database backup/restore capabilities and verify a restoration procedure in a non-production environment.
@@ -513,3 +515,12 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Live existing-email/new-email Google sign-in remains pending the owner's retry; no real Google token exchange or user-account modification was performed by the automated tests.
 
 - Final verification: 47 unit checks, nine existing auth integration checks and the new real callback/linking/new-user/rejection integration scenario pass. TypeScript and focused lint pass. Google exchange is synthetic in automated checks; the owner must start a fresh live sign-in rather than reload the old callback code.
+
+### October 26, 2026 — Owner-led deployment preparation and public checks
+
+- Owner provisioned Azure `remindme` in Germany West Central after the Students region policy blocked East US 2, and supplied the production Vercel URL. The resource export confirms Linux Flex / Node 22 / HTTPS-only / 2048 MB; it does not establish worker publication, runtime secrets or timer execution.
+- Live read-only checks passed for the website, login, signed-out redirect, session endpoint, PWA manifest and service worker. Private cache headers are present. The prepared security headers still need web redeployment. Azure responds with its default welcome page, which cannot prove timer health.
+- Reviewed earlier local deployment changes: removed redundant untracked `vercel.json`, retained `.vercelignore`, security headers, accurate delivery-status flag and corrected Google-linking settings copy. Production rebuilding cleared generated `next-env.d.ts` drift. No application secrets or installed cloud tools were added.
+- Added a manual-only GitHub OIDC worker deployment workflow, plus `docs/deployment.md` covering separate runtime environment settings, exact production Google callback, artifact packaging, existing-database policy, release order, recipient approvals, monitoring, recovery and remaining smoke checks. The owner must configure the GitHub/Azure identity and run deployment; no cloud login or publication was performed.
+- Read-only existing application database inspection found six reviewed migrations applied, three due notifications and no processing/stale/failed notifications. Review outstanding reminders before enabling the timer. No row was changed or email sent.
+- Verification: production web build (including TypeScript), standalone worker build, lint, all 47 unit tests, formatting and diff whitespace checks pass. Windows sandbox child-process restrictions required rerunning builds/tests outside the sandbox; the reruns passed. Integration/browser suites were not rerun for these configuration/docs changes; hosted credentials, timer/SMTP and physical PWA checks remain open.

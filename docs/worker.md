@@ -1,5 +1,7 @@
 # Notification worker
 
+Current owner-led cloud setup and exact runtime variables are in the [deployment runbook](./deployment.md). The Azure resource was provisioned October 26; worker publication and timer/email verification remain separate gates. The local-only statements below record the original Phase 6 checkpoint.
+
 Phase 6 supplies a shared queue processor and a separate Azure Functions Node.js v4 adapter. The project owner requested local implementation because no Azure subscription is configured yet. **No Azure resources or deployed timer are claimed.** Core Tools/Azurite host execution, subscription/region eligibility, cloud SMTP connectivity and a deployed end-to-end timer check remain pending.
 
 ## Queue behavior

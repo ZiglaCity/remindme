@@ -1,0 +1,13 @@
+.git/
+.env*
+node_modules/
+.next/
+.next-e2e/
+dist/
+coverage/
+test-results/
+playwright-report/
+.npm-cache/
+**/local.settings.json
+*.log
+*.zip

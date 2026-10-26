@@ -35,6 +35,10 @@ export const webEnvSchema = databaseEnvSchema.extend({
     .default("allowlist"),
   TESTER_EMAIL_ALLOWLIST: z.string().default(""),
   SMTP_APPROVED_RECIPIENTS: z.string().default(""),
+  EMAIL_DELIVERY_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 export const smtpEnvSchema = z
   .object({

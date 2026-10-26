@@ -27,8 +27,8 @@ export default async function SettingsPage() {
           <h2>{user.name}</h2>
           <p className="account-email">{user.email}</p>
           <div className="account-note">
-            Email/password addresses are unverified. Password recovery and
-            account linking aren’t available yet.
+            Password recovery isn’t available yet. Google sign-in can connect to
+            your account using the same verified email.
           </div>
           <div className="account-signout">
             <span>Finished for now?</span>

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requirePageSession } from "@/lib/auth/session";
 import { getDatabase } from "@/lib/db/server";
+import { getWebEnvironment } from "@/lib/env/server";
 import { readReminder, notificationHistory } from "@/repositories/reminders";
 import { reminderIdInput } from "@/lib/validation/reminders";
 import { AppError } from "@/lib/http/errors";
@@ -67,7 +68,11 @@ export default async function ReminderPage({
         <section className="schedule-panel">
           <p className="eyebrow">A LITTLE NUDGE, ALONG THE WAY</p>
           <h2>Notification schedule</h2>
-          <p>Email delivery isn’t active yet. Your reminder is saved.</p>
+          <p>
+            {getWebEnvironment().EMAIL_DELIVERY_ENABLED
+              ? "Email check-ins are enabled for approved recipients."
+              : "Email delivery isn’t active yet. Your reminder is saved."}
+          </p>
           {!notifications.length && (
             <p className="mt-4 text-sm">No notifications scheduled.</p>
           )}

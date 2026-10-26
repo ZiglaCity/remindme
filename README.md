@@ -2,6 +2,8 @@
 
 A personal reminder app in development. See [requirements](./prd.md), [confirmed decisions](./docs/decisions.md), and the [phased plan](./TODO.md).
 
+For the current owner-led Vercel/Azure release, use the [deployment and environment runbook](./docs/deployment.md). The web origin and Azure Function App have been provisioned; hosted worker delivery is not yet verified. Earlier phase notes below describe their original checkpoints.
+
 Phases 1–3 provide the database foundation, authentication, manual reminder CRUD, and durable schedules. Phase 4 adds Gemini text interpretation, clarification, editable confirmation, optional browser voice capture, and manual fallback. See [reminder behavior](./docs/reminders.md) and [text/voice setup](./docs/ai.md).
 
 ## Local setup
