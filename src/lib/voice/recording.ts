@@ -23,6 +23,7 @@ export function createRecording(
   factory: () => Recognition,
   options: {
     language: string;
+    continuous?: boolean;
     onText(text: string): void;
     onState(state: RecordingState): void;
     onError(message: string): void;
@@ -87,7 +88,10 @@ export function createRecording(
     const prefix = base;
     let speaking = false;
     recognition.lang = options.language;
-    recognition.continuous = true;
+    // Android continuous dictation can promote cumulative interim hypotheses
+    // into separate final results. Short sessions avoid that native behavior;
+    // onend below keeps our recording open across the native session boundaries.
+    recognition.continuous = options.continuous ?? true;
     recognition.interimResults = true;
     recognition.onstart = () => {
       // Native restarts must not reset the user's inactivity deadline.
@@ -123,12 +127,19 @@ export function createRecording(
       }
     };
     recognition.onerror = (event) => {
+      if (disposed || current !== recognition) return;
       if (event.error === "no-speech") return;
       if (event.error === "aborted" && !wanted) return;
       options.onError(
-        event.error === "not-allowed" || event.error === "service-not-allowed"
+        event.error === "not-allowed"
           ? "Microphone access was denied. Allow it in your browser settings, or type your reminder."
-          : "Voice capture stopped. Your text is still here; try again or keep typing.",
+          : event.error === "network" || event.error === "service-not-allowed"
+            ? "Your browser’s speech service is unavailable. Try Chrome or type your reminder."
+            : event.error === "audio-capture"
+              ? "The microphone couldn’t capture audio. Check your microphone or type your reminder."
+              : event.error === "language-not-supported"
+                ? "Your browser’s speech service doesn’t support this language. You can type your reminder instead."
+                : "Voice capture stopped. Your text is still here; try again or keep typing.",
       );
       finish();
     };

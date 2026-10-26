@@ -541,3 +541,9 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Production sign-in retry, 90% receipt, full hosted recurring-delivery acceptance and physical PWA installation still need owner evidence.
 
 - Validation for this amendment: 46 unit checks, all 32 isolated database integration checks (including owner isolation and foreign-origin rejection), production web compilation/TypeScript, lint, formatting and independent worker build pass.
+
+### October 26, 2026 — Android transcription repetition
+
+- Owner reproduced cumulative transcript repetition in Chrome/Brave mobile and a speech-service stop in Brave desktop. Android now uses short native recognition sessions with the existing automatic restart, snapshot replacement, Stop behavior and 15-second inactivity window. Desktop continuous recording is preserved; intentional repeated words are never removed by a deduplication heuristic.
+- Distinguish speech-service availability/network failures from permission denial, audio capture and unsupported language. Ignore stale errors from retired sessions. No extra speech service, diagnostics controls or recording UI was introduced.
+- Verification: all 49 unit checks, lint, formatting and production web build/TypeScript pass. Focused recording checks cover growing interim phrases, session restart and final correction, intentional repetition, stale callbacks, network failure, explicit stop and silence. Real Chrome Android/Brave recording still needs owner verification; simulated events do not establish native service availability.

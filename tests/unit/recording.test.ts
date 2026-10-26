@@ -4,7 +4,7 @@ import {
   SILENCE_TIMEOUT_MS,
   type Recognition,
 } from "../../src/lib/voice/recording";
-function setup() {
+function setup(continuous = true) {
   const instances: Recognition[] = [];
   const onText = vi.fn();
   const onState = vi.fn();
@@ -30,7 +30,7 @@ function setup() {
       instances.push(instance);
       return instance;
     },
-    { language: "en-US", onText, onState, onError },
+    { language: "en-US", continuous, onText, onState, onError },
   );
   return { recording, instances, onText, onState, onError };
 }
@@ -40,6 +40,66 @@ const result = (recognition: Recognition, ...parts: string[]) =>
   });
 afterEach(() => vi.useRealTimers());
 describe("recording session", () => {
+  it("uses short Android sessions and replaces growing hypotheses without repeating them", () => {
+    vi.useFakeTimers();
+    const s = setup(false);
+    s.recording.start("Existing note");
+    const first = s.instances[0];
+    expect(first.continuous).toBe(false);
+    expect(first.interimResults).toBe(true);
+    for (const phrase of [
+      "I",
+      "I",
+      "I am",
+      "I am testing",
+      "I am testing the app",
+    ])
+      result(first, phrase);
+    expect(s.onText).toHaveBeenLastCalledWith(
+      "Existing note I am testing the app",
+    );
+    first.onend?.();
+    vi.advanceTimersByTime(250);
+    const second = s.instances[1];
+    expect(second.continuous).toBe(false);
+    result(second, "remind");
+    result(second, "remind me in six minutes");
+    s.recording.stop();
+    result(second, "remind me in 6 minutes");
+    second.onend?.();
+    expect(s.onText).toHaveBeenLastCalledWith(
+      "Existing note I am testing the app remind me in 6 minutes",
+    );
+    vi.advanceTimersByTime(20_000);
+    expect(s.instances).toHaveLength(2);
+  });
+  it("preserves deliberately repeated words instead of deduplicating the user's speech", () => {
+    const s = setup(false);
+    s.recording.start("");
+    result(s.instances[0], "very very important");
+    expect(s.onText).toHaveBeenLastCalledWith("very very important");
+    s.recording.dispose();
+  });
+  it("distinguishes speech-service failures from microphone denial and ignores stale errors", () => {
+    vi.useFakeTimers();
+    const s = setup(false);
+    s.recording.start("");
+    const first = s.instances[0];
+    const lateError = first.onerror!;
+    result(first, "Keep this text");
+    first.onend?.();
+    vi.advanceTimersByTime(250);
+    lateError({ error: "network" });
+    expect(s.onError).toHaveBeenLastCalledWith("");
+    s.instances[1].onerror?.({ error: "network" });
+    expect(s.onError).toHaveBeenLastCalledWith(
+      expect.stringContaining("speech service is unavailable"),
+    );
+    expect(s.onText).toHaveBeenLastCalledWith("Keep this text");
+    expect(s.onState).toHaveBeenLastCalledWith("idle");
+    vi.advanceTimersByTime(20_000);
+    expect(s.instances).toHaveLength(2);
+  });
   it("replaces interim text, survives native restarts and allows a full silence interval", () => {
     vi.useFakeTimers();
     const s = setup();

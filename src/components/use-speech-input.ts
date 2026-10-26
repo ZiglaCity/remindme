@@ -36,6 +36,7 @@ export function useSpeechInput(text: string, onText: (text: string) => void) {
     recording.current?.dispose();
     recording.current = createRecording(() => new SpeechRecognition(), {
       language: navigator.language || "en-US",
+      continuous: !/Android/i.test(navigator.userAgent),
       onText: (value) => callback.current(value),
       onState: setState,
       onError: setSpeechError,

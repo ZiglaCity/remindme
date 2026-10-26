@@ -50,3 +50,11 @@ The actual SDK error from the former configured model, `gemini-3.8-flash`, was H
 Changed the application default, sample environment, local configured model and smoke-command default to `gemini-3.5-flash-lite`. No microphone code, repeating-event behavior, retries, billing setup or credentials changed. All live requests used synthetic examples and saved nothing.
 
 Google documents [free-tier text input/output](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite) for the stable model. This is a free-tier option, not unlimited or guaranteed free capacity. Exact RPM/TPM/RPD depend on the project's tier and are visible in [AI Studio](https://aistudio.google.com/rate-limit); [Google's rate-limit guide](https://ai.google.dev/gemini-api/docs/rate-limits) says actual capacity may vary. A successful model request does not establish this project's billing tier, so no billing or unlimited-availability claim is made.
+
+## October 26 Android recording compatibility
+
+The owner observed growing repeated phrases in Chrome/Brave on Android while Chrome desktop worked. Android now uses non-continuous native recognition sessions, with the existing automatic restart and 15-second inactivity window preserving the app-level recording experience. Desktop continuous mode is unchanged. Each native session still replaces its interim snapshot; no text deduplication removes intentional repeated words.
+
+Chromium's Android adapter [documents promotion of provisional results in continuous mode](https://chromium.googlesource.com/chromium/src/+/b29b632278fb50dd05453105533064ea189050ae/content/public/android/java/src/org/chromium/content/browser/SpeechRecognitionImpl.java), a plausible cause of the observed cumulative phrases. The change avoids that mode instead of guessing which user words to delete. Physical Android verification remains required.
+
+Speech-service network/availability failures now have a separate message from microphone permission denial; audio-capture and unsupported-language failures also identify the relevant problem. Stale errors from an ended session cannot stop a replacement session. Brave may expose recognition APIs without an operational service; permission alone is not proof of support. No alternate audio provider, microphone diagnostics UI or automatic network retry loop was added.
