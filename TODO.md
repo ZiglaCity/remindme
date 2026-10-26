@@ -317,12 +317,12 @@ Expected files: production deployment configuration, CI/release workflow, produc
 - [ ] Configure Vercel and Azure secrets independently; audit public variables and client bundles for leakage.
 - [ ] Define database backup/restore capabilities and verify a restoration procedure in a non-production environment.
 - [ ] Review and apply production migrations with a known release order; keep web/worker schema compatibility during independent deployments.
-- [ ] Build/deploy web and worker separately; document rollback or forward-fix behavior for code and database changes.
+- [x] Build/deploy web and worker separately; document rollback or forward-fix behavior for code and database changes. Release `bc8530f` deployed successfully to Vercel and Azure October 26; see deployment runbook.
 - [ ] Verify production rate limiting and request limits across multiple serverless instances.
 
 ### Release checks and operations
 
-- [ ] Run unit, database integration, authorization, email, worker concurrency/recovery, and critical Playwright suites.
+- [x] Run unit, database integration, authorization, email, worker concurrency/recovery, and critical Playwright suites. GitHub Checks passed on deployed release `bc8530f`.
 - [ ] Verify real production email/password auth and Google OAuth with dedicated test accounts.
 - [ ] Create/correct/save/edit a reminder and inspect persisted deadline, version, and schedule; verify complete/delete suppress outstanding work.
 - [ ] Verify real timer execution, due selection, SMTP acceptance, recipient receipt, attempt history, and sent-state persistence.
@@ -524,3 +524,11 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Added a manual-only GitHub OIDC worker deployment workflow, plus `docs/deployment.md` covering separate runtime environment settings, exact production Google callback, artifact packaging, existing-database policy, release order, recipient approvals, monitoring, recovery and remaining smoke checks. The owner must configure the GitHub/Azure identity and run deployment; no cloud login or publication was performed.
 - Read-only existing application database inspection found six reviewed migrations applied, three due notifications and no processing/stale/failed notifications. Review outstanding reminders before enabling the timer. No row was changed or email sent.
 - Verification: production web build (including TypeScript), standalone worker build, lint, all 47 unit tests, formatting and diff whitespace checks pass. Windows sandbox child-process restrictions required rerunning builds/tests outside the sandbox; the reruns passed. Integration/browser suites were not rerun for these configuration/docs changes; hosted credentials, timer/SMTP and physical PWA checks remain open.
+
+### October 26, 2026 — Worker and web deployed
+
+- Fetched the portal-created OIDC workflow, corrected it in place to build/publish only `dist/notification-scheduler`, and reused its existing identity secret names. Preserved automatic main-branch deployment and manual dispatch; no duplicate deployment workflow or new local cloud tools were introduced.
+- Committed/pushed release `bc8530f`. Azure worker deployment and Vercel deployment both succeeded; GitHub Checks passed, including unit/integration, web/worker builds and critical Playwright journeys. The working tree was clean after release.
+- Owner confirmed all worker app settings are saved in Azure with `AzureWebJobs.notificationScheduler.Disabled=false`. Live website probes confirm the deployed security headers, microphone permission policy, signed-out redirect and private no-store response.
+- Read-only database observation after deployment found fresh deadline/occurrence cancellations and a new pending occurrence schedule, consistent with hosted timer execution and recurring advancement. No manual sending process or direct database mutation was used. No new SMTP attempt was observed at that checkpoint; receipt and hosted recurring email remain open.
+- Requested an owner-created six-minute synthetic reminder, actual inbox confirmation, production Google sign-in/physical PWA results, and Vercel `EMAIL_DELIVERY_ENABLED=true` redeployment. These owner/account/device checks remain pending; successful deployments are not recorded as completion of those acceptance gates.

@@ -12,6 +12,12 @@ Still unverified: production credentials/Google login, AI parsing, persisted CRU
 
 Read-only inspection of the locally configured application database found all six reviewed migrations applied and three due notification rows, with no processing, stale or failed rows. This is not evidence that Azure points at the same database. Review outstanding reminders before enabling the timer; due rows can be coalesced, cancelled or sent according to their current reminder state and recipient approval.
 
+## Release update
+
+Release `bc8530f` was pushed October 26. [Azure deployment](https://github.com/ZiglaCity/remindme/actions/runs/40323215087), [full CI](https://github.com/ZiglaCity/remindme/actions/runs/40323215052) and Vercel deployment succeeded. Public production probes now confirm the prepared security headers are live. The portal-created OIDC workflow was corrected in place and reuses its existing identity secret names. The owner confirmed Azure runtime settings are saved with scheduling enabled. No new account login or local cloud-tool installation was performed.
+
+Read-only database checks after deployment show fresh deadline/occurrence cancellations and a fresh pending occurrence schedule, consistent with timer processing and recurring advancement. Actual email receipt, production Google login, phone installation and the Vercel delivery-status flag remain pending owner verification. The earlier snapshot above describes the pre-release state.
+
 ## Where configuration lives
 
 Azure does not receive `.env.local` from your laptop or Vercel. In **Function App → Settings → Environment variables → App settings**, enter the worker settings below and apply the changes. Azure exposes these values to the Node process through `process.env`; saving settings restarts the app. Enter plain values without surrounding quotes. Never commit environment files or upload local settings. Keep existing platform-generated storage/deployment/monitoring settings.
