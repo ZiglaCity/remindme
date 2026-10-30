@@ -1,11 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config } from "dotenv";
 import { randomUUID } from "node:crypto";
+import { assertIsolatedTestDatabase } from "./tests/database-safety";
 config({
   path: [".env.test.local", ".env.test", ".env.local", ".env"],
   quiet: true,
 });
 process.env.REMINDME_E2E_RUN_ID ??= randomUUID();
+assertIsolatedTestDatabase(process.env);
 const baseURL = "http://127.0.0.1:3100";
 export default defineConfig({
   testDir: "./tests/e2e",

@@ -110,6 +110,9 @@ export const reminders = pgTable(
     sourceText: text("source_text"),
     recurrence: jsonb("recurrence").$type<StoredRecurrence>(),
     occurrenceAnchorAt: instant("occurrence_anchor_at"),
+    deadlineNotificationEnabled: boolean("deadline_notification_enabled")
+      .notNull()
+      .default(false),
     dueAt: instant("due_at").notNull(),
     dueDate: date("due_date", { mode: "string" }).notNull(),
     deadlineType: text("deadline_type", {
@@ -224,7 +227,7 @@ export const scheduledNotifications = pgTable(
       .where(sql`${t.status} = 'processing'`),
     check(
       "notification_threshold_valid",
-      sql`${t.thresholdPercent} in (50,75,90)`,
+      sql`${t.thresholdPercent} in (50,75,90,100)`,
     ),
     check(
       "notification_status_valid",

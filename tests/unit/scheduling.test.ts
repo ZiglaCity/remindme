@@ -77,6 +77,18 @@ describe("deadline interpretation", () => {
   });
 });
 describe("threshold scheduling", () => {
+  it("adds the exact deadline only for reminders using the new policy", () => {
+    const schedule = calculateSchedule(created, due, created, true);
+    expect(schedule.map((item) => item.thresholdPercent)).toEqual([
+      50, 75, 90, 100,
+    ]);
+    expect(schedule.at(-1)?.scheduledFor).toEqual(due);
+    expect(
+      calculateSchedule(created, due, created).map(
+        (item) => item.thresholdPercent,
+      ),
+    ).toEqual([50, 75, 90]);
+  });
   it("follows the formula, correcting the PRD's illustrative 75% arithmetic", () => {
     expect(
       calculateSchedule(created, due, created).map((item) => [

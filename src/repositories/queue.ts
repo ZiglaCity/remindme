@@ -6,7 +6,11 @@ import {
   scheduledNotifications,
 } from "../lib/db/schema";
 import { retryAt } from "../lib/email/policy";
-import { suppression, type DeliveryClaim } from "./delivery";
+import {
+  suppression,
+  isDeadlineNotification,
+  type DeliveryClaim,
+} from "./delivery";
 import { advanceRecurring } from "./recurrence";
 import type { Database } from "./preferences";
 import type { z } from "zod";
@@ -47,8 +51,10 @@ export async function claimBatch(
           options.exclude?.length
             ? notInArray(reminders.id, options.exclude)
             : undefined,
-          sql`((${reminders.recurrence} is not null and ${reminders.status} = 'active' and ${reminders.deletedAt} is null and ${reminders.dueAt} <= ${now}) or exists (select 1 from scheduled_notifications n where n.reminder_id = ${reminders.id} and n.status in ('pending','processing') and (
-        ${reminders.deletedAt} is not null or ${reminders.status} <> 'active' or ${reminders.dueAt} <= ${now} or n.schedule_version <> ${reminders.scheduleVersion}
+          sql`((${reminders.recurrence} is not null and ${reminders.status} = 'active' and ${reminders.deletedAt} is null and ${reminders.dueAt} <= ${now}
+        and not exists (select 1 from scheduled_notifications final where final.reminder_id = ${reminders.id} and ${reminders.deadlineNotificationEnabled} and final.schedule_version = ${reminders.scheduleVersion} and final.threshold_percent = 100 and final.status in ('pending','processing')))
+        or exists (select 1 from scheduled_notifications n where n.reminder_id = ${reminders.id} and n.status in ('pending','processing') and (
+        ${reminders.deletedAt} is not null or ${reminders.status} <> 'active' or (${reminders.dueAt} <= ${now} and (not ${reminders.deadlineNotificationEnabled} or n.threshold_percent <> 100)) or n.schedule_version <> ${reminders.scheduleVersion}
         or (n.status = 'pending' and n.scheduled_for <= ${now} and (n.next_attempt_at is null or n.next_attempt_at <= ${now}))
         or (n.status = 'processing' and (n.processing_started_at is null or n.processing_started_at <= ${cutoff}))
       )))`,
@@ -63,15 +69,6 @@ export async function claimBatch(
       .for("update", { skipLocked: true });
     for (const reminder of owners) {
       result.examined.push(reminder.id);
-      if (
-        reminder.recurrence &&
-        reminder.status === "active" &&
-        !reminder.deletedAt &&
-        reminder.dueAt <= now
-      ) {
-        await advanceRecurring(tx, reminder, now, "occurrence_elapsed");
-        continue;
-      }
       const rows = await tx
         .select()
         .from(scheduledNotifications)
@@ -87,6 +84,23 @@ export async function claimBatch(
         )
         .limit(100)
         .for("update");
+      // Finish (or exhaust) this occurrence's deadline notification before
+      // advancing. Legacy series have no such row and retain their old policy.
+      const outstandingDeadline = rows.some(
+        (notification) =>
+          notification.scheduleVersion === reminder.scheduleVersion &&
+          isDeadlineNotification({ reminder, notification, email: "" }),
+      );
+      if (
+        reminder.recurrence &&
+        reminder.status === "active" &&
+        !reminder.deletedAt &&
+        reminder.dueAt <= now &&
+        !outstandingDeadline
+      ) {
+        await advanceRecurring(tx, reminder, now, "occurrence_elapsed");
+        continue;
+      }
       const pending: (typeof rows)[number][] = [];
       let inFlight = false;
       for (const row of rows) {
@@ -135,7 +149,14 @@ export async function claimBatch(
           const next = row.attemptCount
             ? retryAt(row.attemptCount, now, env.SMTP_RETRY_DELAYS_SECONDS)
             : now;
-          const failed = exhausted || next >= reminder.dueAt;
+          const failed =
+            exhausted ||
+            (!isDeadlineNotification({
+              reminder,
+              notification: row,
+              email: "",
+            }) &&
+              next >= reminder.dueAt);
           await tx
             .update(scheduledNotifications)
             .set({

@@ -20,6 +20,7 @@ export type ReminderFormInitial = {
   priority: "low" | "normal" | "high";
   revision: number;
   recurrence?: Recurrence | null;
+  deadlineNotificationEnabled?: boolean;
   deadline: {
     type: "date_only" | "date_time";
     date: string;
@@ -364,9 +365,11 @@ export function ReminderForm({
             </label>
             <p className="text-sm text-stone-600">
               Each occurrence gets advance check-ins at 50%, 75% and 90% of its
-              interval. Mark complete stops the entire repeating reminder.
-              Monthly dates use the last day when needed; repeats keep this time
-              zone.
+              interval.
+              {(!initial || initial.deadlineNotificationEnabled) &&
+                " A final reminder is scheduled for the due time (100%)."}{" "}
+              Mark complete stops the entire repeating reminder. Monthly dates
+              use the last day when needed; repeats keep this time zone.
             </p>
           </>
         )}

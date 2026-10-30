@@ -1,7 +1,8 @@
 import { config } from "dotenv";
 import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from "vitest";
-import { eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
+import { createDeliveryService } from "../../src/services/notifications/deliver";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDatabase } from "../../src/lib/db/connection";
 import {
@@ -30,7 +31,7 @@ const env = parseEnvironment(workerEnvSchema, {
   SMTP_PASS: "fixture",
   SMTP_SECURE: "false",
   EMAIL_FROM: "fixture@example.test",
-  SMTP_APPROVED_RECIPIENTS: "fixture@example.test",
+  SMTP_APPROVED_RECIPIENTS: `repeat-${owner.userId}@example.test`,
 });
 let now = new Date("2026-10-20T12:00Z");
 const service = createReminderService(db, () => now);
@@ -51,6 +52,23 @@ const queue = (id: string) =>
     .select()
     .from(scheduledNotifications)
     .where(eq(scheduledNotifications.reminderId, id));
+// Represent a reminder created before the new deadline-notification policy.
+async function legacyCreate(value: unknown = input) {
+  const row = await service.create(owner, value);
+  await db
+    .update(reminders)
+    .set({ deadlineNotificationEnabled: false })
+    .where(eq(reminders.id, row.id));
+  await db
+    .delete(scheduledNotifications)
+    .where(
+      and(
+        eq(scheduledNotifications.reminderId, row.id),
+        eq(scheduledNotifications.thresholdPercent, 100),
+      ),
+    );
+  return { ...row, deadlineNotificationEnabled: false };
+}
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./migrations" });
   excluded = (
@@ -78,8 +96,55 @@ afterAll(async () => {
 });
 
 describe("durable repeating reminders", () => {
+  it("sends each new series' 100% notification before advancing, including its final occurrence", async () => {
+    const first = await service.create(owner, {
+      ...input,
+      recurrence: { ...input.recurrence, endsOn: "2026-11-01" },
+    });
+    expect(await queue(first.id)).toHaveLength(4);
+    let sent = 0;
+    const deliver = createDeliveryService(
+      db,
+      async () => {
+        sent++;
+        return { messageId: "<recurring-deadline>" };
+      },
+      env,
+      () => now,
+    );
+    for (const version of [1, 2]) {
+      const current = await readReminder(db, owner, first.id);
+      now = new Date(current.dueAt);
+      const results = await Promise.all([batch(), batch()]);
+      const claims = results.flatMap((result) => result.claims);
+      expect(claims).toHaveLength(1);
+      expect((await readReminder(db, owner, first.id)).scheduleVersion).toBe(
+        version,
+      );
+      expect((await deliver(claims[0])).status).toBe("sent");
+      await batch();
+      if (version === 1) {
+        const next = await readReminder(db, owner, first.id);
+        expect(next.dueDate).toBe("2026-11-01");
+        expect(next.deadlineNotificationEnabled).toBe(true);
+        expect(
+          (await queue(first.id))
+            .filter((row) => row.status === "pending")
+            .map((row) => row.thresholdPercent)
+            .sort((a, b) => a - b),
+        ).toEqual([50, 75, 90, 100]);
+      }
+    }
+    expect((await readReminder(db, owner, first.id)).status).toBe("completed");
+    expect(sent).toBe(2);
+    expect(
+      (await queue(first.id)).filter(
+        (row) => row.thresholdPercent === 100 && row.status === "sent",
+      ),
+    ).toHaveLength(2);
+  });
   it("advances once across concurrent workers and calculates fresh 50/75/90 schedules", async () => {
-    const first = await service.create(owner, input);
+    const first = await legacyCreate(input);
     expect(await queue(first.id)).toHaveLength(3);
     now = new Date("2026-10-25T14:00Z");
     await Promise.all([batch(), batch()]);
@@ -122,7 +187,7 @@ describe("durable repeating reminders", () => {
     ).toHaveLength(0);
   });
   it("skips missed occurrences, preserves the calendar anchor on text edits, and stops at its end date", async () => {
-    const first = await service.create(owner, {
+    const first = await legacyCreate({
       ...input,
       recurrence: { ...input.recurrence, endsOn: "2026-11-08" },
     });
@@ -148,7 +213,7 @@ describe("durable repeating reminders", () => {
     ).rejects.toMatchObject({ code: "recurrence_ended" });
   });
   it("rolls back the cursor if next-occurrence queue insertion fails", async () => {
-    const first = await service.create(owner, input);
+    const first = await legacyCreate(input);
     const name = `repeat_fail_${owner.userId.replaceAll("-", "")}`;
     await db.execute(
       sql.raw(

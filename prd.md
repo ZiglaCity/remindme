@@ -6,6 +6,8 @@
 **Initial audience:** Public accounts, following the October 26 owner amendment
 **Primary objective:** Build a reliable, installable reminder application that converts natural-language thoughts into scheduled reminders and delivers timely email notifications.
 
+**October 30 owner amendment:** Newly created reminders use 50%, 75%, 90% and 100% notifications, with the final notification scheduled at the deadline. Existing reminders retain their original policy, including after editing/reopening and on future occurrences of legacy series. New recurring series include 100% on every occurrence. Completion/deletion suppress all outstanding notifications.
+
 ---
 
 # 1. Product Overview

@@ -8,9 +8,9 @@ Set server-side `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS
 
 Set `APP_URL` to the application origin for email links. The local diagnostic command also accepts `NEXT_PUBLIC_APP_URL` as a fallback; the independent worker requires `APP_URL` explicitly. Links are built from trusted HTTP(S) configuration and the stored reminder ID, never reminder text. User content is escaped in HTML, included in plain text, and cannot load files or remote content through Nodemailer.
 
-`SMTP_APPROVED_RECIPIENTS` is a comma-separated list of exact addresses. It stays separate from account admission even in `TESTER_ACCESS_MODE=all`. The recipient comes from the reminder owner's persisted account and must pass approval immediately before delivery. The transport also enforces approval and sends to one envelope recipient. No client request supplies an outbound address.
+`SMTP_APPROVED_RECIPIENTS` is a comma-separated list of exact addresses. It stays separate from account admission now that account registration is public. The recipient comes from the reminder owner's persisted account and must pass approval immediately before delivery. The transport also enforces approval and sends to one envelope recipient. No client request supplies an outbound address.
 
-`SMTP_MAX_ATTEMPTS` defaults to five, with a hard maximum of ten. `SMTP_RETRY_DELAYS_SECONDS` defaults to `60,300,900,3600`: 1, 5, 15, then 60 minutes. Values must be nondecreasing integers between one second and one day (at most nine entries). If more attempts are configured than delays, the final delay repeats. Retries at/after the reminder deadline are not scheduled.
+`SMTP_MAX_ATTEMPTS` defaults to five, with a hard maximum of ten. `SMTP_RETRY_DELAYS_SECONDS` defaults to `60,300,900,3600`: 1, 5, 15, then 60 minutes. Values must be nondecreasing integers between one second and one day (at most nine entries). If more attempts are configured than delays, the final delay repeats. Advance check-ins are not retried at/after the deadline. New reminders also have a 100% notification scheduled exactly at the deadline; that notification can send and retry afterward under the existing attempt/backoff limits. Completion, deletion, replaced schedules and recipient approval still suppress it.
 
 ## Delivery and reliability
 
@@ -39,3 +39,9 @@ Verified October 19, 2026: TLS/authentication passed, one explicitly approved te
 For rotation, replace the credential in the private local/hosting secret store, restart/redeploy every process using it, verify authentication, then revoke the old credential at the provider. Never enable raw SMTP debug logging to diagnose a production account. Before deployment verify the provider's current account quotas, permitted sender identities, SMTP port access and usage terms.
 
 References: [Nodemailer SMTP/TLS/timeouts](https://nodemailer.com/smtp), [Gmail setup](https://nodemailer.com/usage/using-gmail/), [SMTP response codes](https://www.rfc-editor.org/rfc/rfc5321.html#section-4.2).
+
+## October 30 deadline notification for new reminders
+
+New reminders use 50%, 75%, 90% and 100%. The 100% row is scheduled at the stored `due_at` instant (23:59 in the saved zone for date-only reminders). The one-minute Azure timer delivers it on the first eligible poll at/after that instant; SMTP arrival is not guaranteed to the exact second. Existing catch-up coalescing still applies to missed advance check-ins. A new series keeps its current occurrence until the 100% row is sent, failed or cancelled, then advances on a subsequent worker pass. Terminal failure does not stall a series forever.
+
+Migration `0006` adds `deadline_notification_enabled=false` for legacy reminders and permits threshold 100. Only new reminder creation sets the flag to true. Existing schedules are not backfilled; edits, reopening and future occurrences of legacy series retain 50/75/90. New series retain all four thresholds on later occurrences. Apply the reviewed migration before deploying the rebuilt worker, then the new web app; older workers would cancel 100% rows at their deadlines. No additional environment variable is needed.

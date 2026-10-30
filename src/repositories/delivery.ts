@@ -51,12 +51,19 @@ export async function deliveryContext(db: Database, id: string) {
 export type DeliveryContext = NonNullable<
   Awaited<ReturnType<typeof deliveryContext>>
 >;
+export function isDeadlineNotification(context: DeliveryContext) {
+  return (
+    context.reminder.deadlineNotificationEnabled &&
+    context.notification.thresholdPercent === 100
+  );
+}
 export function suppression(context: DeliveryContext, now: Date) {
   if (context.reminder.deletedAt) return "reminder_deleted";
   if (context.reminder.status !== "active") return "reminder_inactive";
   if (context.notification.scheduleVersion !== context.reminder.scheduleVersion)
     return "schedule_replaced";
-  if (context.reminder.dueAt <= now) return "deadline_passed";
+  if (context.reminder.dueAt <= now && !isDeadlineNotification(context))
+    return "deadline_passed";
   return null;
 }
 
@@ -307,7 +314,14 @@ export async function finishAttempt(
       notification.attemptCount < env.SMTP_MAX_ATTEMPTS
         ? retryAt(notification.attemptCount, now, env.SMTP_RETRY_DELAYS_SECONDS)
         : null;
-    const retry = next && next < reminder.dueAt;
+    const retry =
+      next &&
+      (isDeadlineNotification({
+        reminder,
+        notification,
+        email: context.email,
+      }) ||
+        next < reminder.dueAt);
     await tx
       .update(scheduledNotifications)
       .set({

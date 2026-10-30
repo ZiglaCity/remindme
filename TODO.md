@@ -555,3 +555,14 @@ Initial checkpoint: planning complete; implementation has not started. Next task
 - Four live synthetic task-list/clarification scenarios passed, including all item retention, an answered grouping question, shared-deadline errands and separate-deadline clarification. No owner transcript was sent to the provider, reminder saved or email sent by these checks.
 
 - Release validation: 49 unit checks, lint, formatting and production web build/TypeScript pass; the live weekly-recurrence smoke also passes with the revised instructions. The four list cases plus recurrence are synthetic provider checks, not saved production reminders.
+
+### October 30, 2026 — Deadline notification for new reminders
+
+- Added the 100% notification at the exact stored deadline alongside 50/75/90 for new reminders. A stored internal policy flag preserves existing reminders, edits/reopening and legacy recurring series without backfilling notification rows. New recurring series retain all four thresholds on future occurrences.
+- Updated worker deadline suppression, retry/recovery eligibility and recurring advancement so the final notification can send at/after its due time and is not cancelled by advancing the series first. Existing approval, completion/deletion, schedule-version fencing, claim ownership, bounded attempts/recovery and advance catch-up rules remain.
+- Prepared additive migration `0006`; apply it before the rebuilt worker, then the new web app. Changes remain uncommitted for owner review. During verification the test URL was discovered to target the application database; its existing test setup already applied the additive migration. No test invoked the real SMTP sender.
+
+- Verification boundary correction: TEST_DATABASE_URL and DATABASE_URL resolve to the same database. Database testing stopped on discovery. The first suite run had 34 passing checks and two failures; the new recurring-delivery fixture needed its synthetic recipient approved, and existing delivery results are unreliable with the live worker able to touch the same database. The fixture is corrected, but database/browser reruns remain pending a separate database. Added startup guards for integration and browser tests, covering direct/pooled Neon aliases and credentials differences.
+- Read-only application audit afterward found zero reminders opted into the new policy and zero 100% notification rows. The additive schema migration is already recorded there; do not edit applied migration SQL. Local review changes are neither committed nor deployed.
+
+- Final non-database validation: all 52 unit checks, TypeScript, production web build, rebuilt standalone worker, lint, formatting and diff checks pass. The new startup guard was verified to reject the current shared database configuration without opening a connection. Full database/browser acceptance remains pending a genuinely isolated test database.

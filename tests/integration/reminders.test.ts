@@ -111,7 +111,7 @@ afterAll(async () => {
 }, 30_000);
 
 describe("transactional reminders and schedules", () => {
-  it("persists exactly three formula-based notifications and enforces queue constraints", async () => {
+  it("persists exactly four formula-based notifications and enforces queue constraints", async () => {
     now = new Date("2026-10-20T18:00:00Z");
     const row = await service.create(fixtures[0], input());
     const notifications = (await queue(row.id)).sort(
@@ -123,6 +123,7 @@ describe("transactional reminders and schedules", () => {
       "2026-10-25T18:00:00.000Z",
       "2026-10-28T06:00:00.000Z",
       "2026-10-29T18:00:00.000Z",
+      "2026-10-30T18:00:00.000Z",
     ]);
     await expect(
       db.insert(scheduledNotifications).values({
@@ -185,13 +186,13 @@ describe("transactional reminders and schedules", () => {
       changed.filter(
         (item) => item.scheduleVersion === 1 && item.status === "cancelled",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(
       changed
         .filter((item) => item.scheduleVersion === 2)
         .map((item) => item.thresholdPercent)
-        .sort(),
-    ).toEqual([75, 90]);
+        .sort((a, b) => a - b),
+    ).toEqual([75, 90, 100]);
   });
   it("completes and deletes idempotently, cancels claims, and reopens into a new version", async () => {
     now = new Date("2026-10-20T18:00:00Z");
@@ -229,7 +230,7 @@ describe("transactional reminders and schedules", () => {
     expect(row.scheduleVersion).toBe(2);
     expect(
       (await queue(row.id)).filter((item) => item.status === "pending"),
-    ).toHaveLength(3);
+    ).toHaveLength(4);
     const deleted = await service.transition(fixtures[0], row.id, "delete", {
       expectedRevision: row.revision,
     });
@@ -289,7 +290,7 @@ describe("transactional reminders and schedules", () => {
     const notifications = await queue(row.id);
     expect(
       notifications.filter((item) => item.status === "pending"),
-    ).toHaveLength(3);
+    ).toHaveLength(4);
     expect((await readReminder(db, fixtures[0], row.id)).scheduleVersion).toBe(
       2,
     );

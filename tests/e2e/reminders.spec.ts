@@ -183,7 +183,7 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   let detail = await read();
   expect(detail.reminder.dueAt).toBe(`${initialDate}T23:59:00.000Z`);
   expect(detail.reminder.deadlineType).toBe("date_only");
-  expect(detail.notifications).toHaveLength(3);
+  expect(detail.notifications).toHaveLength(4);
   const originalIds = detail.notifications
     .map((item: { id: string }) => item.id)
     .sort();
@@ -268,12 +268,12 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
     detail.notifications.filter(
       (item: { status: string }) => item.status === "cancelled",
     ),
-  ).toHaveLength(3);
+  ).toHaveLength(4);
   expect(
     detail.notifications.filter(
       (item: { status: string }) => item.status === "pending",
     ),
-  ).toHaveLength(3);
+  ).toHaveLength(4);
   await page
     .getByRole("button", { name: "Mark complete", exact: true })
     .click();

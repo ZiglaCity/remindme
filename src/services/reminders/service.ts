@@ -66,6 +66,7 @@ export function createReminderService(
             sourceText: input.sourceText ?? null,
             priority: input.priority,
             recurrence,
+            deadlineNotificationEnabled: true,
             occurrenceAnchorAt: recurrence ? now : null,
             ...deadline,
             createdAt: now,

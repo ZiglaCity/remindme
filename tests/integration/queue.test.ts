@@ -102,6 +102,120 @@ const rows = (id: string) =>
     .from(scheduledNotifications)
     .where(eq(scheduledNotifications.reminderId, id));
 describe("queue processing", () => {
+  it("delivers the new 100% row at the deadline, persists acceptance after it, and does not resend", async () => {
+    const service = createReminderService(db, () => now);
+    const reminder = await service.create(owner, {
+      title: "Deadline fixture",
+      deadline: {
+        type: "date_time",
+        date: "2026-10-21",
+        time: "12:10",
+        timeZone: "UTC",
+      },
+    });
+    expect(
+      (await rows(reminder.id))
+        .map((row) => row.thresholdPercent)
+        .sort((a, b) => a - b),
+    ).toEqual([50, 75, 90, 100]);
+    const sender = vi.fn<EmailSender>(async (message) => {
+      expect(message.text).toContain("100%");
+      now = new Date(now.getTime() + 1000);
+      return { messageId: "<deadline>" };
+    });
+    now = new Date(reminder.dueAt);
+    const result = await processNotifications(db, sender, env, {
+      clock: () => now,
+      log: () => {},
+    });
+    expect(result.sent).toBe(1);
+    expect(
+      (await rows(reminder.id)).find((row) => row.thresholdPercent === 100)
+        ?.status,
+    ).toBe("sent");
+    await processNotifications(db, sender, env, {
+      clock: () => now,
+      log: () => {},
+    });
+    expect(sender).toHaveBeenCalledOnce();
+  });
+  it("retries the deadline email after its due time and still honors completion before a claimed send", async () => {
+    const service = createReminderService(db, () => now);
+    const reminder = await service.create(owner, {
+      title: "Deadline retry fixture",
+      deadline: {
+        type: "date_time",
+        date: "2026-10-21",
+        time: "12:10",
+        timeZone: "UTC",
+      },
+    });
+    now = new Date(reminder.dueAt.getTime() + 30_000);
+    const sender = vi
+      .fn<EmailSender>()
+      .mockRejectedValueOnce({ responseCode: 421 })
+      .mockResolvedValue({ messageId: "<deadline-retry>" });
+    const run = () =>
+      processNotifications(db, sender, env, {
+        clock: () => now,
+        log: () => {},
+      });
+    expect((await run()).retries).toBe(1);
+    const deadline = (await rows(reminder.id)).find(
+      (row) => row.thresholdPercent === 100,
+    )!;
+    expect(deadline.nextAttemptAt!.getTime()).toBeGreaterThan(now.getTime());
+    expect((await run()).claimed).toBe(0);
+    now = deadline.nextAttemptAt!;
+    expect((await run()).sent).toBe(1);
+    expect(sender).toHaveBeenCalledTimes(2);
+    const cancelled = await service.create(owner, {
+      title: "Completed deadline fixture",
+      deadline: {
+        type: "date_time",
+        date: "2026-10-21",
+        time: "12:20",
+        timeZone: "UTC",
+      },
+    });
+    now = new Date(cancelled.dueAt);
+    const claim = (await batch(1)).claims[0];
+    await service.transition(owner, cancelled.id, "complete");
+    expect(
+      (await createDeliveryService(db, sender, env, () => now)(claim)).status,
+    ).toBe("skipped");
+    expect(sender).toHaveBeenCalledTimes(2);
+    expect(
+      (await rows(cancelled.id)).find((row) => row.thresholdPercent === 100)
+        ?.status,
+    ).toBe("cancelled");
+  });
+  it("keeps legacy reminders on their original thresholds after edits and reopening", async () => {
+    const { reminder } = await fixture();
+    expect(reminder.deadlineNotificationEnabled).toBe(false);
+    const service = createReminderService(db, () => now);
+    let updated = await service.edit(owner, reminder.id, {
+      expectedRevision: reminder.revision,
+      deadline: {
+        type: "date_time",
+        date: "2026-10-22",
+        time: "12:00",
+        timeZone: "UTC",
+      },
+    });
+    updated = await service.transition(owner, reminder.id, "complete", {
+      expectedRevision: updated.revision,
+    });
+    await service.transition(owner, reminder.id, "reopen", {
+      expectedRevision: updated.revision,
+    });
+    const pending = (await rows(reminder.id)).filter(
+      (row) => row.status === "pending",
+    );
+    expect(
+      pending.map((row) => row.thresholdPercent).sort((a, b) => a - b),
+    ).toEqual([50, 75, 90]);
+  });
   it("coalesces catch-up, suppresses deadlines and prevents overlapping claims", async () => {
     const a = await fixture();
     const b = await fixture();

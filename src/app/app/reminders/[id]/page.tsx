@@ -55,6 +55,7 @@ export default async function ReminderPage({
               revision: reminder.revision,
               status: reminder.status,
               recurrence: reminder.recurrence,
+              deadlineNotificationEnabled: reminder.deadlineNotificationEnabled,
               deadline: deadlineFields(reminder),
             }}
           />
