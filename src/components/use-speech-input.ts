@@ -1,19 +1,15 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createRecording, type RecordingState } from "@/lib/voice/recording";
 import {
-  createRecording,
-  type Recognition,
-  type RecordingState,
-} from "@/lib/voice/recording";
-
-type SpeechWindow = Window & {
-  SpeechRecognition?: new () => Recognition;
-  webkitSpeechRecognition?: new () => Recognition;
-};
+  isAndroidUserAgent,
+  resolveRecognitionConstructor,
+  type SpeechWindow,
+} from "@/lib/voice/browser";
 const constructor = () => {
   if (typeof window === "undefined") return undefined;
   const browser = window as SpeechWindow;
-  return browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
+  return resolveRecognitionConstructor(browser);
 };
 const subscribe = () => () => {};
 export function useSpeechInput(text: string, onText: (text: string) => void) {
@@ -36,7 +32,7 @@ export function useSpeechInput(text: string, onText: (text: string) => void) {
     recording.current?.dispose();
     recording.current = createRecording(() => new SpeechRecognition(), {
       language: navigator.language || "en-US",
-      continuous: !/Android/i.test(navigator.userAgent),
+      continuous: !isAndroidUserAgent(navigator.userAgent),
       onText: (value) => callback.current(value),
       onState: setState,
       onError: setSpeechError,
