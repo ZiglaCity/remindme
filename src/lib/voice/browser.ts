@@ -8,4 +8,5 @@ export type SpeechWindow = Window & {
 export const resolveRecognitionConstructor = (browser?: SpeechWindow) =>
   browser?.webkitSpeechRecognition ?? browser?.SpeechRecognition;
 
-export const isAndroidUserAgent = (userAgent: string) => /Android/i.test(userAgent);
+export const isAndroidUserAgent = (userAgent: string) =>
+  /Android/i.test(userAgent);
