@@ -247,7 +247,13 @@ test("manual CRUD preserves schedules, handles stale edits, and isolates account
   await expect(
     page.getByText("This reminder changed.", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Reload saved version" }).click();
+  await Promise.all([
+    page.waitForLoadState("domcontentloaded"),
+    page.getByRole("button", { name: "Reload saved version" }).click(),
+  ]);
+  await expect(
+    page.getByRole("button", { name: "Edit reminder", exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Edit reminder", exact: true })
     .click();
