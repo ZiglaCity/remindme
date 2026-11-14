@@ -31,11 +31,11 @@ Exclude billing, shared workspaces, calendar integration, SMS/push, native apps,
 | 3     | Manual reminder CRUD and durable schedules           | Complete                                       |
 | 4     | Confirmed AI parsing and optional voice capture      | Chrome voice confirmed; denial checks pending  |
 | 5     | SMTP delivery, attempts, and retries                 | Complete                                       |
-| 6     | Independently deployed Azure timer worker            | Implemented locally; Azure deployment deferred |
+| 6     | Independently deployed Azure timer worker            | Deployed; hosted recovery checks still pending |
 | 7     | Complete mobile UI and installable PWA               | Implemented; physical device checks pending    |
-| 7a    | Repeats, grounded descriptions and saved detail view | Verified locally; Azure delivery deferred      |
-| 8     | Production deployment and operational hardening      | Not started                                    |
-| 9     | Reproducible documentation and handoff               | Not started                                    |
+| 7a    | Repeats, grounded descriptions and saved detail view | Deployed; full recurring acceptance pending    |
+| 8     | Production deployment and operational hardening      | In progress                                    |
+| 9     | Reproducible documentation and handoff               | In progress                                    |
 
 ## Review before Phase 8 - October 20, 2026
 

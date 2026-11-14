@@ -2,7 +2,7 @@
 
 A personal reminder app in development. See [requirements](./prd.md), [confirmed decisions](./docs/decisions.md), and the [phased plan](./TODO.md).
 
-For the current owner-led Vercel/Azure release, use the [deployment and environment runbook](./docs/deployment.md). The web origin and Azure Function App have been provisioned; hosted worker delivery is not yet verified. Earlier phase notes below describe their original checkpoints.
+For the current owner-led Vercel/Azure release, use the [deployment and environment runbook](./docs/deployment.md). The web app and Azure worker are deployed; the remaining open gates are production Google OAuth retry, broader physical-device/PWA checks, and full recurring-delivery acceptance.
 
 Phases 1–3 provide the database foundation, authentication, manual reminder CRUD, and durable schedules. Phase 4 adds Gemini text interpretation, clarification, editable confirmation, optional browser voice capture, and manual fallback. See [reminder behavior](./docs/reminders.md) and [text/voice setup](./docs/ai.md).
 
@@ -41,10 +41,16 @@ Keep environment files and Azure local settings out of Git. Only `NEXT_PUBLIC_AP
 
 Registration and sign-in are open to everyone; reminders and preferences remain isolated by the authenticated user ID. Legacy TESTER_ACCESS_MODE and TESTER_EMAIL_ALLOWLIST settings are ignored and can be removed. SMTP recipient approval remains separate. Profile time-zone changes affect new reminders only. On production Vercel, the canonical auth origin comes from the hosting-provided production domain, avoiding duplicate URL configuration.
 
-Phase 5 adds SMTP delivery, persisted outcomes, bounded retries and a guarded `npm run smtp:check` command; see [email configuration and live checks](./docs/email.md). Automatic queue processing requires the Phase 6 Azure scheduler. Vercel/Azure deployment, live Google OAuth and representative physical microphone checks remain pending. Manual reminder workflows do not require Gemini or SMTP.
+Phase 5 adds SMTP delivery, persisted outcomes, bounded retries and a guarded `npm run smtp:check` command; see [email configuration and live checks](./docs/email.md). Hosted SMTP delivery has owner-confirmed 50% and 75% reminder receipt; broader production acceptance checks remain open.
 
-The Phase 6 worker is implemented locally with safe batch claims, catch-up coalescing, bounded recovery and a separate Azure timer artifact. Run `npm run worker:build` to prepare it, or `npm run worker:check` for read-only queue status. See [worker operation and deployment checkpoint](./docs/worker.md). Azure setup/deployment was deferred by the owner; automatic hosted delivery is not running yet.
+The Phase 6 worker includes safe batch claims, catch-up coalescing, bounded recovery and a separate Azure timer artifact. Run `npm run worker:build` to prepare it, or `npm run worker:check` for read-only queue status. See [worker operation and deployment checkpoint](./docs/worker.md). The owner deployed the worker in Azure; remaining verification focuses on full recurring-delivery and recovery acceptance.
 
-Phase 7 adds the redesigned desktop/mobile application, owner-scoped dashboard/search/filtering, and installable PWA metadata with a private-safe offline shell. See [UI, installation and cache behavior](./docs/ui-pwa.md). Native device installation and production HTTPS checks remain pending; ordinary development mode intentionally does not register a service worker.
+Phase 7 adds the redesigned desktop/mobile application, owner-scoped dashboard/search/filtering, and installable PWA metadata with a private-safe offline shell. See [UI, installation and cache behavior](./docs/ui-pwa.md). Physical device installation/upgrade checks remain pending; ordinary development mode intentionally does not register a service worker.
 
-The owner-requested recurrence extension supports daily/weekly/monthly reminders, selected weekdays, intervals and end dates. Every occurrence retains advance 50/75/90 check-ins; Mark complete stops the whole series. Saved details now open read-only with an explicit Edit action. See [recurrence behavior and operation](./docs/recurrence.md). Apply migrations `0004`–`0005` and rebuild the worker before running this version; automatic recurrence/email still requires the deferred worker deployment.
+The owner-requested recurrence extension supports daily/weekly/monthly reminders, selected weekdays, intervals and end dates. Every occurrence retains advance 50/75/90 check-ins plus the owner-added 100% deadline notification for new reminders. Mark complete stops the whole series. Saved details now open read-only with an explicit Edit action. See [recurrence behavior and operation](./docs/recurrence.md). Apply migrations `0004`–`0006` and rebuild the worker before running this version.
+
+## Current project phase (November 2026 snapshot)
+
+- Phase 8 (deployment/hardening) is in progress with web + worker released.
+- Phase 9 (documentation/handoff) is now in progress.
+- Open acceptance checks are tracked in [TODO.md](./TODO.md), especially production Google OAuth retry, physical PWA verification and full hosted recurring-delivery evidence.

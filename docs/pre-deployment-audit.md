@@ -1,5 +1,7 @@
 # Requirements audit before Phase 8
 
+> Historical snapshot: this audit reflects the pre-deployment checkpoint from October 20, 2026. For current release status, see [TODO.md](../TODO.md) and [deployment.md](./deployment.md).
+
 Reviewed October 20, 2026 against [PRD v1.1](../prd.md), [confirmed decisions](./decisions.md), the [recurrence amendment](./recurrence.md), the implementation and [TODO](../TODO.md). Deployment has not started. This report distinguishes implementation, local verification, owner confirmation and external checks.
 
 ## Requirement coverage
